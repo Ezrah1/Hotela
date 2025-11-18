@@ -1,0 +1,145 @@
+{
+    "branding": {
+        "name": "Joyce Resorts",
+        "logo": "assets/img/Joyce logo.png",
+        "admin_logo": "assets/img/Joyce logo.png",
+        "contact_email": "info@joyceresorts.com",
+        "contact_phone": "0115879655",
+        "tagline": "Machakos - Where comfort meets tranquility."
+    },
+    "pos": {
+        "default_till": "Front Desk",
+        "currency": "KES",
+        "tax_rate": 0.16,
+        "enable_discounts": true
+    },
+    "hotel": {
+        "check_in_time": "14:00",
+        "check_out_time": "10:00",
+        "default_room_type": "Deluxe",
+        "room_rates": []
+    },
+    "website": {
+        "booking_enabled": true,
+        "order_enabled": true,
+        "food_orders_enabled": false,
+        "primary_color": "#14532d",
+        "secondary_color": "#0f172a",
+        "accent_color": "#d97706",
+        "meta_title": "Joyce Resorts, Machakos - Where comfort meets tranquility.",
+        "meta_description": "Discover a peaceful escape where comfort meets nature. Joyce Resorts offers cozy guest rooms, delicious dining, elegant event spaces, and lush gardens perfect for weddings, meetings, and retreats - all in the heart of Machakos.",
+        "meta_keywords": "Joyce Resorts, Machakos hotel, Machakos wedding venue, Joyce Resorts Kenya",
+        "hero_heading": "Joyce Resorts - Machakos, Kenya",
+        "hero_tagline": "Where comfort meets tranquility.",
+        "hero_cta_text": "Book Your Stay",
+        "hero_cta_link": "/booking",
+        "hero_background_image": "assets/img/Joyce banner.png",
+        "highlight_one_title": "Comfortable Stays",
+        "highlight_one_text": "Garden-view rooms fitted with plush bedding and curated amenities.",
+        "highlight_two_title": "Signature Dining",
+        "highlight_two_text": "Restaurant & outdoor lounge serving seasonal Kenyan cuisine.",
+        "highlight_three_title": "Events & Retreats",
+        "highlight_three_text": "Elegant event gardens, conference spaces, and on-site coordination.",
+        "banner_enabled": false,
+        "banner_text": "We are offering 20% off weekend stays!",
+        "pages": {
+            "rooms": true,
+            "food": true,
+            "about": true,
+            "contact": true,
+            "order": true
+        },
+        "intro_tagline": "Joyce Resorts | Machakos",
+        "intro_heading": "Where comfort meets tranquility.",
+        "intro_copy": "Discover a peaceful escape where comfort meets nature. Joyce Resorts offers cozy guest rooms, delicious dining, elegant event spaces, and lush gardens perfect for weddings, meetings, and retreats - all in the heart of Machakos.",
+        "rooms_intro": "Suites and guest rooms inspired by breezy coastlines, curated for restful nights in Machakos.",
+        "food_intro": "Restaurant & outdoor lounge featuring fresh, comforting Kenyan cuisine.",
+        "about_content": "Joyce Resorts blends Machakos\u2019 natural calm with thoughtful hospitality. From guest rooms to event lawns, every stay is guided by warmth, detail, and digital convenience.",
+        "contact_message": "Call, WhatsApp, or email us for stays, dining, and event planning support.",
+        "promo_message": "Discover a peaceful escape where comfort meets nature in the heart of Machakos.",
+        "contact_whatsapp": "+254115879655",
+        "contact_address": "Machakos\u2013Wote Road, Machakos, Kenya",
+        "contact_map_embed": "",
+        "room_display_mode": "both",
+        "restaurant_tagline": "Restaurant & Outdoor Lounge",
+        "restaurant_title": "Sun-drenched dining in Machakos.",
+        "restaurant_cta_text": "Explore the Menu",
+        "restaurant_image": "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1400&q=80",
+        "category_icons": {},
+        "category_icon_classes": {
+            "breakfast": "fa-solid fa-bread-slice",
+            "lunch": "fa-solid fa-burger",
+            "dinner": "fa-solid fa-utensils",
+            "snacks": "fa-solid fa-cookie-bite",
+            "soft drinks": "fa-solid fa-bottle-water",
+            "alcohol": "fa-solid fa-wine-glass",
+            "specials": "fa-solid fa-star"
+        },
+        "amenities": [
+            {
+                "title": "Comfortable Guest Rooms",
+                "description": "Spacious, airy rooms with plush bedding and natural textures."
+            },
+            {
+                "title": "Restaurant & Outdoor Lounge",
+                "description": "All-day dining plus sundowner-ready outdoor lounge seating."
+            },
+            {
+                "title": "Conference Facilities",
+                "description": "Flexible meeting rooms supported by modern AV and on-site planners."
+            },
+            {
+                "title": "Event Gardens",
+                "description": "Lush lawns tailored for weddings, retreats, and creative shoots."
+            },
+            {
+                "title": "Ample Parking",
+                "description": "Secure on-site parking for guests, day visitors, and coaches."
+            },
+            {
+                "title": "24-Hour Security",
+                "description": "Round-the-clock security and concierge presence for peace of mind."
+            }
+        ],
+        "sample_rooms": [
+            { "name": "Casselberry", "rate": 10000 },
+            { "name": "Boca Raton", "rate": 3500 },
+            { "name": "Atlantic Beach", "rate": 3500 },
+            { "name": "Heathrow", "rate": 5000 },
+            { "name": "TitusVille", "rate": 3500 },
+            { "name": "Venice", "rate": 5000 },
+            { "name": "Anna Maria", "rate": 3500 },
+            { "name": "Tavares", "rate": 3500 },
+            { "name": "Jupiter", "rate": 10000 },
+            { "name": "Kissimee", "rate": 3500 },
+            { "name": "Amelia Island", "rate": 5000 },
+            { "name": "Miami", "rate": 5000 },
+            { "name": "Longwood", "rate": 3500 },
+            { "name": "Melbourne", "rate": 10000 },
+            { "name": "Key West", "rate": 3500 },
+            { "name": "Largo", "rate": 3500 }
+        ]
+    },
+    "inventory": {
+        "low_stock_threshold": 5,
+        "auto_requisition": true
+    },
+    "staff": {
+        "roles_manageable": true
+    },
+    "notifications": {
+        "email_enabled": true,
+        "sms_enabled": true,
+        "pre_arrival_hours": 24
+    },
+    "integrations": {
+        "mpesa_paybill": "",
+        "sms_gateway": "AfricasTalking"
+    },
+    "security": {
+        "session_timeout": 30,
+        "two_factor": false
+    }
+}
+
+
