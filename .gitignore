@@ -1,0 +1,69 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+/vendor/
+/node_modules/
+composer.lock
+package-lock.json
+yarn.lock
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+storage/logs/*
+*.log
+!storage/logs/.gitkeep
+
+# Cache
+storage/cache/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+!storage/cache/.gitkeep
+!storage/framework/cache/.gitkeep
+!storage/framework/sessions/.gitkeep
+!storage/framework/views/.gitkeep
+
+# Uploads (keep structure but ignore content)
+public/assets/uploads/*
+!public/assets/uploads/.gitkeep
+!public/assets/uploads/room-types/.gitkeep
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# PHP
+*.php~
+*.php.bak
+
+# Database
+*.sql
+*.sqlite
+*.db
+
+# Build files
+dist/
+build/
+
