@@ -23,14 +23,14 @@ ob_start();
             <p class="petty-cash-subtitle">Manage petty cash account for small purchases (Limit: KES <?= number_format($limitAmount, 2); ?>)</p>
         </div>
         <div class="header-actions">
-        <a href="<?= base_url('dashboard/petty-cash/deposit'); ?>" class="btn btn-success">
+        <a href="<?= base_url('staff/dashboard/petty-cash/deposit'); ?>" class="btn btn-success">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
             Add Funds
         </a>
-        <a href="<?= base_url('dashboard/expenses/create'); ?>" class="btn btn-primary">
+        <a href="<?= base_url('staff/dashboard/expenses/create'); ?>" class="btn btn-primary">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -86,7 +86,7 @@ ob_start();
         <?php endif; ?>
     </div>
 
-    <form method="get" action="<?= base_url('dashboard/petty-cash'); ?>" class="petty-cash-filters">
+    <form method="get" action="<?= base_url('staff/dashboard/petty-cash'); ?>" class="petty-cash-filters">
         <div class="filter-grid">
             <label>
                 <span>Start Date</span>
@@ -106,8 +106,8 @@ ob_start();
             </label>
             <div class="filter-actions">
                 <button class="btn btn-primary" type="submit">Apply Filters</button>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/petty-cash?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/petty-cash?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/petty-cash?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/petty-cash?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
             </div>
         </div>
     </form>
@@ -149,7 +149,7 @@ ob_start();
             $userRole = $user['role_key'] ?? $user['role'] ?? '';
             if (in_array($userRole, ['admin', 'finance_manager'])): 
             ?>
-                <a href="<?= base_url('dashboard/petty-cash/settings'); ?>" class="btn btn-outline btn-sm">
+                <a href="<?= base_url('staff/dashboard/petty-cash/settings'); ?>" class="btn btn-outline btn-sm">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
@@ -197,7 +197,7 @@ ob_start();
                                 <td>
                                     <span class="description"><?= htmlspecialchars($transaction['description']); ?></span>
                                     <?php if (!empty($transaction['expense_reference'])): ?>
-                                        <a href="<?= base_url('dashboard/expenses/show?id=' . $transaction['expense_id']); ?>" class="expense-link">
+                                        <a href="<?= base_url('staff/dashboard/expenses/show?id=' . $transaction['expense_id']); ?>" class="expense-link">
                                             (Expense: <?= htmlspecialchars($transaction['expense_reference']); ?>)
                                         </a>
                                     <?php endif; ?>

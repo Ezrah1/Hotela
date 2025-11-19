@@ -28,10 +28,10 @@
 <article class="card">
     <h3>Quick Configuration Links</h3>
     <div class="quick-links">
-        <a href="<?= base_url('admin/settings?tab=branding'); ?>">Branding</a>
-        <a href="<?= base_url('admin/settings?tab=pos'); ?>">POS</a>
-        <a href="<?= base_url('admin/settings?tab=notifications'); ?>">Notifications</a>
-        <a href="<?= base_url('admin/settings?tab=security'); ?>">Security</a>
+        <a href="<?= base_url('staff/admin/settings?tab=branding'); ?>">Branding</a>
+        <a href="<?= base_url('staff/admin/settings?tab=pos'); ?>">POS</a>
+        <a href="<?= base_url('staff/admin/settings?tab=notifications'); ?>">Notifications</a>
+        <a href="<?= base_url('staff/admin/settings?tab=security'); ?>">Security</a>
     </div>
 </article>
 <?php if (!empty($dashboardData['arrivals'])): ?>

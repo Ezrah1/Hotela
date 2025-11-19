@@ -123,13 +123,59 @@ class OrderController extends Controller
         }
         $total = (float)$cart['total'];
 
+        // Process payment using unified payment processing service
+        $paymentProcessor = new \App\Services\Payments\PaymentProcessingService();
+        $paymentMethod = $contact['payment'] ?? 'cash';
+        
+        $mpesaPhone = null;
+        $mpesaCheckoutRequestId = null;
+        $mpesaMerchantRequestId = null;
+        $mpesaStatus = null;
+        $paymentStatus = 'paid';
+        
+        try {
+            $reference = 'ORDER-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+            $paymentOptions = [
+                'reference' => $reference,
+                'description' => 'Guest Order Payment',
+            ];
+            
+            // Add phone for M-Pesa
+            if ($paymentMethod === 'mpesa') {
+                $mpesaPhone = trim($contact['phone'] ?? '');
+                if (empty($mpesaPhone)) {
+                    http_response_code(422);
+                    echo 'Phone number is required for M-Pesa payment.';
+                    return;
+                }
+                $paymentOptions['phone'] = $mpesaPhone;
+            }
+            
+            $paymentResult = $paymentProcessor->processPayment($paymentMethod, $total, $paymentOptions);
+            
+            $mpesaPhone = $paymentResult['mpesa_phone'] ?? null;
+            $mpesaCheckoutRequestId = $paymentResult['mpesa_checkout_request_id'] ?? null;
+            $mpesaMerchantRequestId = $paymentResult['mpesa_merchant_request_id'] ?? null;
+            $mpesaStatus = $paymentResult['mpesa_status'] ?? null;
+            $paymentStatus = $paymentResult['payment_status'] ?? 'paid';
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo 'Payment processing failed: ' . $e->getMessage();
+            return;
+        }
+
         $saleId = $this->sales->create([
             'user_id' => null,
             'till_id' => null,
-            'payment_type' => $contact['payment'] === 'room' ? 'room' : ($contact['payment'] === 'mpesa' ? 'mpesa' : ($contact['payment'] === 'card' ? 'card' : 'cash')),
+            'payment_type' => $paymentMethod,
             'total' => $total,
             'notes' => sprintf('Guest order (%s) %s', $contact['service'], $contact['notes']),
             'reservation_id' => null,
+            'mpesa_phone' => $mpesaPhone,
+            'mpesa_checkout_request_id' => $mpesaCheckoutRequestId,
+            'mpesa_merchant_request_id' => $mpesaMerchantRequestId,
+            'mpesa_status' => $mpesaStatus,
+            'payment_status' => $paymentStatus,
         ], $saleItems);
 
         // Deduct inventory using recipe components, default first location

@@ -128,32 +128,50 @@ if (!function_exists('load_settings_cache')) {
             return $GLOBALS['__hotela_settings'];
         }
 
-        try {
-            $pdo = db();
-            $tenantId = \App\Support\Tenant::id();
-            $stmt = $pdo->prepare('SELECT tenant_id, namespace, `key`, value FROM settings WHERE tenant_id IS NULL OR tenant_id = :tenant');
-            $stmt->execute(['tenant' => $tenantId]);
+        $nested = [];
 
-            $global = [];
-            $tenantSettings = [];
-            while ($row = $stmt->fetch()) {
-                $value = json_decode($row['value'], true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    $value = $row['value'];
-                }
-                if ($row['tenant_id'] === null) {
-                    $global[$row['namespace']][$row['key']] = $value;
+        try {
+            // Load from system_settings table (legacy)
+            $settingsRepo = new \App\Repositories\SystemSettingsRepository();
+            $allSettings = $settingsRepo->all();
+            
+            // Convert flat settings to nested structure for backward compatibility
+            foreach ($allSettings as $key => $setting) {
+                $segments = explode('_', $key, 2);
+                if (count($segments) === 2) {
+                    $nested[$segments[0]][$segments[1]] = $setting['value'];
                 } else {
-                    $tenantSettings[$row['namespace']][$row['key']] = $value;
+                    $nested[$key] = $setting['value'];
                 }
             }
-
-            $merged = array_replace_recursive($global, $tenantSettings);
-            $GLOBALS['__hotela_settings'] = $merged;
         } catch (\Throwable $e) {
-            $GLOBALS['__hotela_settings'] = [];
+            // Silently fail if system_settings table doesn't exist
         }
 
+        try {
+            // Load from settings table (namespace/key structure)
+            $db = db();
+            $stmt = $db->query('SELECT namespace, `key`, value FROM settings WHERE tenant_id IS NULL ORDER BY namespace, `key`');
+            $settingsRows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            
+            foreach ($settingsRows as $row) {
+                $namespace = $row['namespace'];
+                $key = $row['key'];
+                $value = json_decode($row['value'], true);
+                
+                // Initialize namespace if it doesn't exist
+                if (!isset($nested[$namespace])) {
+                    $nested[$namespace] = [];
+                }
+                
+                // Set the value (this will overwrite system_settings values if they conflict)
+                $nested[$namespace][$key] = $value;
+            }
+        } catch (\Throwable $e) {
+            // Silently fail if settings table doesn't exist or query fails
+        }
+            
+        $GLOBALS['__hotela_settings'] = $nested;
         return $GLOBALS['__hotela_settings'];
     }
 }
@@ -191,12 +209,22 @@ if (!function_exists('settings_set_cache')) {
 if (!function_exists('format_currency')) {
     function format_currency(float $amount, ?string $currency = null, int $decimals = 0): string
     {
+        $settingsRepo = new \App\Repositories\SystemSettingsRepository();
         $symbol = $currency
-            ?? settings('pos.currency_symbol')
-            ?? settings('branding.currency_symbol')
-            ?? settings('pos.currency', 'KES');
+            ?? $settingsRepo->get('currency_symbol', 'KSh');
 
         return trim($symbol . ' ' . number_format($amount, $decimals));
+    }
+}
+
+if (!function_exists('system_setting')) {
+    function system_setting(string $key, $default = null)
+    {
+        static $repo = null;
+        if ($repo === null) {
+            $repo = new \App\Repositories\SystemSettingsRepository();
+        }
+        return $repo->get($key, $default);
     }
 }
 

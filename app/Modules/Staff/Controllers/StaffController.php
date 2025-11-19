@@ -58,11 +58,8 @@ class StaffController extends Controller
         }
 
         // Check tenant access
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null && (int)($user['tenant_id'] ?? 0) !== $tenantId) {
-            header('Location: ' . base_url('dashboard/staff?error=Access%20denied'));
-            return;
-        }
+        
+        // Single installation - no tenant access check needed
 
         $roles = db()->query('SELECT `key`, name FROM roles ORDER BY name ASC')->fetchAll();
 
@@ -89,11 +86,8 @@ class StaffController extends Controller
         }
 
         // Check tenant access
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null && (int)($user['tenant_id'] ?? 0) !== $tenantId) {
-            header('Location: ' . base_url('dashboard/staff?error=Access%20denied'));
-            return;
-        }
+        
+        // Single installation - no tenant access check needed
 
         $name = trim($request->input('name', ''));
         $email = trim($request->input('email', ''));

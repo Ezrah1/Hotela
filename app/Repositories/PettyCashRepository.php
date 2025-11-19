@@ -15,7 +15,7 @@ class PettyCashRepository
 
     public function getAccount(): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -28,10 +28,7 @@ class PettyCashRepository
             WHERE 1 = 1
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND pca.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' LIMIT 1';
 
@@ -54,15 +51,14 @@ class PettyCashRepository
 
     public function createAccount(): int
     {
-        $tenantId = \App\Support\Tenant::id();
+        
 
         $stmt = $this->db->prepare('
-            INSERT INTO petty_cash_account (tenant_id, account_name, balance, limit_amount, status)
-            VALUES (:tenant_id, :account_name, :balance, :limit_amount, :status)
+            INSERT INTO petty_cash_account (account_name, balance, limit_amount, status)
+            VALUES (:account_name, :balance, :limit_amount, :status)
         ');
 
         $stmt->execute([
-            'tenant_id' => $tenantId,
             'account_name' => 'Petty Cash',
             'balance' => 0,
             'limit_amount' => 2000,
@@ -74,7 +70,7 @@ class PettyCashRepository
 
     public function updateAccount(array $data): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'account_name' => $data['account_name'] ?? 'Petty Cash',
             'limit_amount' => $data['limit_amount'] ?? 2000,
@@ -92,10 +88,7 @@ class PettyCashRepository
             WHERE 1 = 1
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -131,15 +124,12 @@ class PettyCashRepository
 
     public function getAccountById(int $id): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $id];
 
         $sql = 'SELECT * FROM petty_cash_account WHERE id = :id';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' LIMIT 1';
 
@@ -170,16 +160,15 @@ class PettyCashRepository
 
         $stmt = $this->db->prepare('
             INSERT INTO petty_cash_transactions (
-                tenant_id, account_id, transaction_type, amount, description,
+                account_id, transaction_type, amount, description,
                 expense_id, receipt_number, authorized_by, processed_by, notes
             ) VALUES (
-                :tenant_id, :account_id, :transaction_type, :amount, :description,
+                :account_id, :transaction_type, :amount, :description,
                 :expense_id, :receipt_number, :authorized_by, :processed_by, :notes
             )
         ');
 
         $stmt->execute([
-            'tenant_id' => \App\Support\Tenant::id(),
             'account_id' => $accountId,
             'transaction_type' => $type,
             'amount' => $amount,
@@ -201,7 +190,7 @@ class PettyCashRepository
 
     public function getTransactions(?string $startDate = null, ?string $endDate = null, ?string $type = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -218,10 +207,7 @@ class PettyCashRepository
             WHERE 1 = 1
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND pct.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($startDate) {
             $sql .= ' AND DATE(pct.created_at) >= :start_date';
@@ -248,7 +234,7 @@ class PettyCashRepository
 
     public function getSummary(?string $startDate = null, ?string $endDate = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -260,10 +246,7 @@ class PettyCashRepository
             WHERE 1 = 1
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($startDate) {
             $sql .= ' AND DATE(created_at) >= :start_date';

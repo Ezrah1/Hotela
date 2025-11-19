@@ -11,7 +11,7 @@ ob_start();
 <section class="card">
     <header class="compose-header">
         <h2>Compose Message</h2>
-        <a href="<?= base_url('dashboard/messages'); ?>" class="btn btn-outline">
+        <a href="<?= base_url('staff/dashboard/messages'); ?>" class="btn btn-outline">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
@@ -31,7 +31,7 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('dashboard/messages/compose'); ?>" class="compose-form">
+    <form method="post" action="<?= base_url('staff/dashboard/messages/compose'); ?>" class="compose-form">
         <div class="form-group">
             <label>
                 <span>Send To</span>
@@ -104,7 +104,7 @@ ob_start();
                 </svg>
                 Send Message
             </button>
-            <a href="<?= base_url('dashboard/messages'); ?>" class="btn btn-outline">Cancel</a>
+            <a href="<?= base_url('staff/dashboard/messages'); ?>" class="btn btn-outline">Cancel</a>
         </div>
     </form>
 </section>

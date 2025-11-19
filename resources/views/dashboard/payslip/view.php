@@ -8,7 +8,7 @@ ob_start();
             <h2>Payslip - <?= date('F Y', strtotime($payslip['pay_period_end'])); ?></h2>
             <p class="payslip-detail-subtitle">Pay Period: <?= date('M j', strtotime($payslip['pay_period_start'])); ?> - <?= date('M j, Y', strtotime($payslip['pay_period_end'])); ?></p>
         </div>
-        <a class="btn btn-ghost" href="<?= base_url('dashboard/payslip'); ?>">
+        <a class="btn btn-ghost" href="<?= base_url('staff/dashboard/payslip'); ?>">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="15 18 9 12 15 6"></polyline>
             </svg>

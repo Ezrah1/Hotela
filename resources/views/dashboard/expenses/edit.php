@@ -21,7 +21,7 @@ ob_start();
 <section class="card">
     <header class="page-header">
         <div>
-            <a href="<?= base_url('dashboard/expenses'); ?>" class="back-link">
+            <a href="<?= base_url('staff/dashboard/expenses'); ?>" class="back-link">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -43,7 +43,7 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('dashboard/expenses/edit?id=' . $expense['id']); ?>" class="expense-form">
+    <form method="post" action="<?= base_url('staff/dashboard/expenses/edit?id=' . $expense['id']); ?>" class="expense-form">
         <div class="form-section">
             <h3 class="section-title">Expense Details</h3>
             <div class="form-grid">
@@ -127,7 +127,7 @@ ob_start();
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <small style="color: #64748b; font-size: 0.875rem; margin-top: 0.25rem;">Optional: Link this expense to a supplier. For supplier bills, use <a href="<?= base_url('dashboard/bills/create'); ?>" style="color: var(--primary);">Bills Management</a> instead.</small>
+                    <small style="color: #64748b; font-size: 0.875rem; margin-top: 0.25rem;">Optional: Link this expense to a supplier. For supplier bills, use <a href="<?= base_url('staff/dashboard/bills/create'); ?>" style="color: var(--primary);">Bills Management</a> instead.</small>
                 </label>
                 <div class="form-group full-width">
                     <div id="supplier-info" style="display: none; padding: 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #e2e8f0; margin-top: 0.5rem;">
@@ -185,7 +185,7 @@ ob_start();
         </div>
 
         <div class="form-actions">
-            <a href="<?= base_url('dashboard/expenses'); ?>" class="btn btn-outline">Cancel</a>
+            <a href="<?= base_url('staff/dashboard/expenses'); ?>" class="btn btn-outline">Cancel</a>
             <button type="submit" class="btn btn-primary">Update Expense</button>
         </div>
     </form>

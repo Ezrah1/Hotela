@@ -15,7 +15,7 @@ class ExpenseRepository
 
     public function all(?string $startDate = null, ?string $endDate = null, ?string $department = null, ?string $status = null, ?int $supplierId = null, ?int $categoryId = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -35,10 +35,7 @@ class ExpenseRepository
             WHERE 1 = 1
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND e.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($startDate) {
             $sql .= ' AND e.expense_date >= :start_date';
@@ -80,7 +77,7 @@ class ExpenseRepository
 
     public function find(int $id): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $id];
 
         $sql = "
@@ -104,10 +101,7 @@ class ExpenseRepository
             WHERE e.id = :id
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND e.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' LIMIT 1';
 
@@ -124,18 +118,17 @@ class ExpenseRepository
 
         $stmt = $this->db->prepare('
             INSERT INTO expenses (
-                tenant_id, reference, category_id, supplier_id, department,
+                reference, category_id, supplier_id, department,
                 description, amount, expense_date, payment_method, bill_reference,
                 is_recurring, recurring_frequency, status, notes, created_by
             ) VALUES (
-                :tenant_id, :reference, :category_id, :supplier_id, :department,
+                :reference, :category_id, :supplier_id, :department,
                 :description, :amount, :expense_date, :payment_method, :bill_reference,
                 :is_recurring, :recurring_frequency, :status, :notes, :created_by
             )
         ');
 
         $stmt->execute([
-            'tenant_id' => \App\Support\Tenant::id(),
             'reference' => $reference,
             'category_id' => $data['category_id'] ?? null,
             'supplier_id' => $data['supplier_id'] ?? null,
@@ -157,7 +150,7 @@ class ExpenseRepository
 
     public function update(int $id, array $data): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'id' => $id,
             'category_id' => $data['category_id'] ?? null,
@@ -192,10 +185,7 @@ class ExpenseRepository
             WHERE id = :id
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -203,7 +193,7 @@ class ExpenseRepository
 
     public function approve(int $id, int $approvedBy): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'id' => $id,
             'approved_by' => $approvedBy,
@@ -211,10 +201,7 @@ class ExpenseRepository
 
         $sql = 'UPDATE expenses SET status = \'approved\', approved_by = :approved_by WHERE id = :id';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -222,7 +209,7 @@ class ExpenseRepository
 
     public function markPaid(int $id, int $paidBy): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'id' => $id,
             'paid_by' => $paidBy,
@@ -230,10 +217,7 @@ class ExpenseRepository
 
         $sql = 'UPDATE expenses SET status = \'paid\', paid_by = :paid_by, paid_at = CURRENT_TIMESTAMP WHERE id = :id';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -241,7 +225,7 @@ class ExpenseRepository
 
     public function getSummary(?string $startDate = null, ?string $endDate = null, ?string $department = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -258,10 +242,7 @@ class ExpenseRepository
             WHERE 1 = 1
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($startDate) {
             $sql .= ' AND expense_date >= :start_date';
@@ -286,7 +267,7 @@ class ExpenseRepository
 
     public function getByDepartment(?string $startDate = null, ?string $endDate = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -299,10 +280,7 @@ class ExpenseRepository
             WHERE department IS NOT NULL
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($startDate) {
             $sql .= ' AND expense_date >= :start_date';
@@ -324,7 +302,7 @@ class ExpenseRepository
 
     public function getByCategory(?string $startDate = null, ?string $endDate = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -338,10 +316,7 @@ class ExpenseRepository
             WHERE 1 = 1
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND e.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($startDate) {
             $sql .= ' AND e.expense_date >= :start_date';
@@ -363,7 +338,7 @@ class ExpenseRepository
 
     public function getBySupplier(?string $startDate = null, ?string $endDate = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -378,10 +353,7 @@ class ExpenseRepository
             WHERE 1 = 1
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND e.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($startDate) {
             $sql .= ' AND e.expense_date >= :start_date';

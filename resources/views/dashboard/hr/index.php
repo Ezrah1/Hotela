@@ -10,7 +10,7 @@ ob_start();
         </div>
     </header>
 
-    <form method="get" action="<?= base_url('dashboard/hr'); ?>" class="hr-filters">
+    <form method="get" action="<?= base_url('staff/dashboard/hr'); ?>" class="hr-filters">
         <div class="filter-grid">
             <label>
                 <span>Search</span>
@@ -37,7 +37,7 @@ ob_start();
             </label>
             <div class="filter-actions">
                 <button class="btn btn-primary" type="submit">Filter</button>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/hr'); ?>">Clear</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/hr'); ?>">Clear</a>
             </div>
         </div>
     </form>
@@ -83,7 +83,7 @@ ob_start();
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <a href="<?= base_url('dashboard/hr/employee?id=' . (int)$user['id']); ?>" class="btn btn-outline btn-small">
+                                <a href="<?= base_url('staff/dashboard/hr/employee?id=' . (int)$user['id']); ?>" class="btn btn-outline btn-small">
                                     View Records
                                 </a>
                             </td>

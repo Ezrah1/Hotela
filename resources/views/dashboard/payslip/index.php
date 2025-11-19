@@ -61,7 +61,7 @@ ob_start();
                         </div>
                     </div>
                     <div class="payslip-card-footer">
-                        <a href="<?= base_url('dashboard/payslip/view?id=' . (int)$payslip['id']); ?>" class="btn btn-outline btn-small">
+                        <a href="<?= base_url('staff/dashboard/payslip/view?id=' . (int)$payslip['id']); ?>" class="btn btn-outline btn-small">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>

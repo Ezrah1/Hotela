@@ -8,7 +8,7 @@ ob_start();
 <section class="card">
     <header class="page-header">
         <div>
-            <a href="<?= base_url('dashboard/suppliers'); ?>" class="back-link">
+            <a href="<?= base_url('staff/dashboard/suppliers'); ?>" class="back-link">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -20,7 +20,7 @@ ob_start();
                     <p class="page-subtitle">Supplier account details and purchase order history</p>
                 </div>
                 <div class="header-actions">
-                    <a href="<?= base_url('dashboard/suppliers/edit?id=' . $supplier['id']); ?>" class="btn btn-outline">
+                    <a href="<?= base_url('staff/dashboard/suppliers/edit?id=' . $supplier['id']); ?>" class="btn btn-outline">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>

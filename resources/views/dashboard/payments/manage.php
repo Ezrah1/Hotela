@@ -15,7 +15,7 @@ ob_start();
             <p class="payments-subtitle">Recorded payments for expenses, bills, and suppliers (<?= htmlspecialchars($dateRangeLabel); ?>)</p>
         </div>
         <div class="header-actions">
-            <a href="<?= base_url('dashboard/payments/record'); ?>" class="btn btn-primary">
+            <a href="<?= base_url('staff/dashboard/payments/record'); ?>" class="btn btn-primary">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -46,7 +46,7 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <form method="get" action="<?= base_url('dashboard/payments/manage'); ?>" class="payments-filters">
+    <form method="get" action="<?= base_url('staff/dashboard/payments/manage'); ?>" class="payments-filters">
         <div class="filter-grid">
             <label>
                 <span>Start Date</span>
@@ -90,8 +90,8 @@ ob_start();
             </label>
             <div class="filter-actions">
                 <button class="btn btn-primary" type="submit">Apply Filters</button>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/payments/manage?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/payments/manage?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/payments/manage?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/payments/manage?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
             </div>
         </div>
     </form>
@@ -174,7 +174,7 @@ ob_start();
                 </svg>
                 <h3>No payments found</h3>
                 <p>No payments match your current filters. Try adjusting your search criteria.</p>
-                <a href="<?= base_url('dashboard/payments/record'); ?>" class="btn btn-primary">Record Payment</a>
+                <a href="<?= base_url('staff/dashboard/payments/record'); ?>" class="btn btn-primary">Record Payment</a>
             </div>
         <?php else: ?>
             <div class="payments-table-wrapper">

@@ -1,0 +1,16 @@
+tunnel: 2e7f8bbc-4083-451a-81fd-668c10f656c0
+credentials-file: C:\Users\User\.cloudflared\2e7f8bbc-4083-451a-81fd-668c10f656c0.json
+
+ingress:
+  # Route all traffic to your local XAMPP server via platform.local
+  # originRequest preserves the original host header
+  - hostname: hotela.ezrahkiilu.com
+    service: http://platform.local
+    originRequest:
+      noHappyEyeballs: false
+      keepAliveConnections: 0
+      keepAliveTimeout: 90s
+      httpHostHeader: hotela.ezrahkiilu.com
+  # Catch-all rule (must be last)
+  - service: http_status:404
+

@@ -8,15 +8,14 @@ $defaultCheckIn = $_GET['check_in'] ?? date('Y-m-d', strtotime('+1 day'));
 $defaultCheckOut = $_GET['check_out'] ?? date('Y-m-d', strtotime('+2 days'));
 $slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $guestProfile, $defaultCheckIn, $defaultCheckOut) {
     ob_start(); ?>
-    <section class="page-hero page-hero--boxed">
+    <section class="page-hero page-hero-simple">
         <div class="container">
-            <div class="page-hero__box">
-                <header>
-                    <p class="eyebrow"><?= htmlspecialchars($website['rooms_intro'] ?? 'Every suite is staged, serviced, and updated from Hotela.'); ?></p>
-                    <h1>Book a specific room in two steps</h1>
-                    <p>Pick dates below and we’ll show real-time availability, pricing, and tailored room suggestions.</p>
-                </header>
-                <form id="roomFilters" class="room-filter-panel">
+            <h1>Our Rooms</h1>
+            <p><?= htmlspecialchars($website['rooms_intro'] ?? 'Every suite is staged, serviced, and updated from Hotela.'); ?></p>
+        </div>
+    </section>
+    <section class="container">
+        <form id="roomFilters" class="room-filter-panel">
                     <div class="room-filter-grid">
                         <label>
                             <span>Check-in</span>
@@ -54,8 +53,6 @@ $slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $
                         <button type="reset" class="btn btn-ghost btn-small">Clear filters</button>
                     </div>
                 </form>
-            </div>
-        </div>
     </section>
     <section class="container rooms-grid" id="room-list">
         <?php foreach ($rooms as $room): ?>
@@ -65,9 +62,11 @@ $slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $
             $roomLabel = trim($room['display_name'] ?? $room['room_number'] ?? $room['room_type_name'] ?? '');
             $roomTypeName = trim($room['room_type_name'] ?? 'Room');
             $isSameLabelAndType = strcasecmp($roomLabel, $roomTypeName) === 0;
-            // Use room image if available, otherwise fall back to room type image
-            $photo = $room['image'] ?? $room['room_type_image'] ?? $room['photo_url'] ?? $room['cover_image'] ?? ($room['room_type_cover'] ?? null);
-            if (!$photo) {
+            // Use room type image (rooms don't have individual images)
+            $photo = $room['room_type_image'] ?? null;
+            if ($photo) {
+                $photo = asset($photo);
+            } else {
                 $photo = 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80';
             }
             $roomDescription = trim((string)($room['description'] ?? ''));

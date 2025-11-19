@@ -9,7 +9,7 @@ ob_start();
             <h2>Create New Task</h2>
             <p class="task-create-subtitle">Assign tasks to staff and track progress</p>
         </div>
-        <a class="btn btn-ghost" href="<?= base_url('dashboard/tasks'); ?>">
+        <a class="btn btn-ghost" href="<?= base_url('staff/dashboard/tasks'); ?>">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -192,7 +192,7 @@ ob_start();
                 </svg>
                 Create Task
             </button>
-            <a class="btn btn-outline" href="<?= base_url('dashboard/tasks'); ?>">Cancel</a>
+            <a class="btn btn-outline" href="<?= base_url('staff/dashboard/tasks'); ?>">Cancel</a>
         </div>
     </form>
 </section>
@@ -925,7 +925,7 @@ async function loadStaffForDepartment(department, targetType = 'assignee') {
     }
 
     try {
-        const response = await fetch(`<?= base_url('dashboard/tasks/staff-by-department'); ?>?department=${encodeURIComponent(department)}`);
+        const response = await fetch(`<?= base_url('staff/dashboard/tasks/staff-by-department'); ?>?department=${encodeURIComponent(department)}`);
         const data = await response.json();
         
         if (data.staff && data.staff.length > 0) {

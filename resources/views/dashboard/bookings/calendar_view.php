@@ -26,7 +26,7 @@ ob_start();
             <h2>Assignment Calendar</h2>
             <p><?= htmlspecialchars($start); ?> → <?= htmlspecialchars($end); ?></p>
         </div>
-        <a class="btn btn-outline" href="<?= base_url('dashboard/bookings'); ?>">Back to bookings</a>
+        <a class="btn btn-outline" href="<?= base_url('staff/dashboard/bookings'); ?>">Back to bookings</a>
     </header>
     <?php if (!empty($_GET['error'])): ?>
         <div class="alert danger"><?= htmlspecialchars($_GET['error']); ?></div>
@@ -56,7 +56,7 @@ ob_start();
                     ?>
                     <td class="<?= $inRange ? 'calendar-slot-active' : ''; ?>">
                         <?php if ($inRange && !$reservation['room_number']): ?>
-                            <form method="post" action="<?= base_url('dashboard/bookings/assign-room'); ?>">
+                            <form method="post" action="<?= base_url('staff/dashboard/bookings/assign-room'); ?>">
                                 <input type="hidden" name="reservation_id" value="<?= (int)$reservation['id']; ?>">
                                 <select name="room_id">
                                     <?php foreach ($availableRooms as $room): ?>

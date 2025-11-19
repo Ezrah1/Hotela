@@ -41,13 +41,28 @@ foreach ($files as $file) {
     }
 
     try {
+        $hasErrors = false;
         foreach ($statements as $sql) {
-            $pdo->exec($sql);
+            try {
+                $pdo->exec($sql);
+            } catch (Throwable $e) {
+                // For tenant removal migration, continue on errors (columns/indexes may not exist)
+                if (str_contains($name, 'remove_tenant_system')) {
+                    $hasErrors = true;
+                    echo "  Warning: {$e->getMessage()}\n";
+                    continue;
+                }
+                throw $e;
+            }
         }
         $stmt = $pdo->prepare('INSERT INTO migrations (migration, batch) VALUES (?, ?)');
         $stmt->execute([$name, $batch]);
         $ran++;
-        echo "Migrated: {$name}\n";
+        if ($hasErrors) {
+            echo "Migrated: {$name} (with warnings)\n";
+        } else {
+            echo "Migrated: {$name}\n";
+        }
     } catch (Throwable $e) {
         echo "Failed migrating {$name}: {$e->getMessage()}\n";
         exit(1);

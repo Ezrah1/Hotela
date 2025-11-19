@@ -15,7 +15,7 @@ class SupplierRepository
 
     public function all(?string $search = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -30,10 +30,7 @@ class SupplierRepository
             WHERE 1 = 1
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND s.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($search) {
             $sql .= ' AND (s.name LIKE :search OR s.contact_person LIKE :search OR s.email LIKE :search OR s.phone LIKE :search)';
@@ -50,15 +47,12 @@ class SupplierRepository
 
     public function find(int $id): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $id];
 
         $sql = "SELECT * FROM suppliers WHERE id = :id";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' LIMIT 1';
 
@@ -69,16 +63,25 @@ class SupplierRepository
         return $supplier ?: null;
     }
 
+    public function findByName(string $name): ?array
+    {
+        $sql = "SELECT * FROM suppliers WHERE name = :name LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['name' => $name]);
+        $supplier = $stmt->fetch();
+        return $supplier ?: null;
+    }
+
     public function create(array $data): int
     {
         $stmt = $this->db->prepare('
             INSERT INTO suppliers (
-                tenant_id, name, contact_person, email, phone, address, 
+                name, contact_person, email, phone, address, 
                 city, country, tax_id, payment_terms, notes, status,
                 bank_name, bank_account_number, bank_branch, bank_swift_code,
                 payment_methods, credit_limit, current_balance
             ) VALUES (
-                :tenant_id, :name, :contact_person, :email, :phone, :address,
+                :name, :contact_person, :email, :phone, :address,
                 :city, :country, :tax_id, :payment_terms, :notes, :status,
                 :bank_name, :bank_account_number, :bank_branch, :bank_swift_code,
                 :payment_methods, :credit_limit, :current_balance
@@ -86,7 +89,6 @@ class SupplierRepository
         ');
 
         $stmt->execute([
-            'tenant_id' => \App\Support\Tenant::id(),
             'name' => $data['name'],
             'contact_person' => $data['contact_person'] ?? null,
             'email' => $data['email'] ?? null,
@@ -112,7 +114,7 @@ class SupplierRepository
 
     public function update(int $id, array $data): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'id' => $id,
             'name' => $data['name'],
@@ -159,10 +161,7 @@ class SupplierRepository
             WHERE id = :id
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -170,7 +169,7 @@ class SupplierRepository
 
     public function delete(int $id): bool
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $id];
 
         // Check if supplier has purchase orders
@@ -184,10 +183,7 @@ class SupplierRepository
 
         $sql = 'DELETE FROM suppliers WHERE id = :id';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

@@ -3,7 +3,7 @@ $website = settings('website', []);
 $guestName = $guest['guest_name'] ?? 'Guest';
 $slot = function () use ($guestName, $guest, $reservations) {
     ob_start(); ?>
-    <section class="page-hero">
+    <section class="page-hero page-hero-simple">
         <div class="container">
             <h1>Welcome back, <?= htmlspecialchars($guestName); ?></h1>
             <p>Review your stays, orders, and reach concierge support any time.</p>
@@ -13,7 +13,8 @@ $slot = function () use ($guestName, $guest, $reservations) {
             </form>
         </div>
     </section>
-    <section class="container portal-grid">
+    <section class="container portal-section">
+        <div class="portal-grid">
         <article class="card">
             <h2>Your bookings</h2>
             <?php if (!$reservations): ?>
@@ -51,6 +52,7 @@ $slot = function () use ($guestName, $guest, $reservations) {
                 <a class="btn btn-outline" href="tel:<?= htmlspecialchars(settings('branding.contact_phone', '')); ?>">Call front desk</a>
             </div>
         </article>
+        </div>
     </section>
     <?php
     return ob_get_clean();

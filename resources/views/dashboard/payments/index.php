@@ -20,14 +20,14 @@ ob_start();
             $userRole = $user['role_key'] ?? $user['role'] ?? '';
             if (in_array($userRole, ['admin', 'finance_manager'])): 
             ?>
-                <a href="<?= base_url('dashboard/payments/record'); ?>" class="btn btn-primary">
+                <a href="<?= base_url('staff/dashboard/payments/record'); ?>" class="btn btn-primary">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
                     Record Payment
                 </a>
-                <a href="<?= base_url('dashboard/payments/manage'); ?>" class="btn btn-outline">
+                <a href="<?= base_url('staff/dashboard/payments/manage'); ?>" class="btn btn-outline">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="9" y1="3" x2="9" y2="21"></line>
@@ -38,7 +38,7 @@ ob_start();
         </div>
     </header>
 
-    <form method="get" action="<?= base_url('dashboard/payments'); ?>" class="payments-filters">
+    <form method="get" action="<?= base_url('staff/dashboard/payments'); ?>" class="payments-filters">
         <div class="filter-grid">
             <label>
                 <span>Start Date</span>
@@ -69,8 +69,8 @@ ob_start();
             </label>
             <div class="filter-actions">
                 <button class="btn btn-primary" type="submit">Apply Filters</button>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/payments?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/payments?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/payments?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/payments?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
             </div>
         </div>
     </form>

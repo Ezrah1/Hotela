@@ -6,14 +6,14 @@ ob_start();
 <section class="card">
     <header class="booking-staff-header">
         <h2>Create New Room Type</h2>
-        <a class="btn btn-outline" href="<?= base_url('dashboard/rooms/types'); ?>">Back to Room Types</a>
+        <a class="btn btn-outline" href="<?= base_url('staff/dashboard/rooms/types'); ?>">Back to Room Types</a>
     </header>
 
     <?php if (!empty($_GET['error'])): ?>
         <div class="alert danger"><?= htmlspecialchars($_GET['error']); ?></div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('dashboard/rooms/create-type'); ?>" enctype="multipart/form-data" style="margin-top: 1.5rem;">
+    <form method="post" action="<?= base_url('staff/dashboard/rooms/create-type'); ?>" enctype="multipart/form-data" style="margin-top: 1.5rem;">
         <div class="form-grid">
             <label>
                 <span>Name *</span>
@@ -64,7 +64,7 @@ ob_start();
 
         <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
             <button class="btn btn-primary" type="submit">Create Room Type</button>
-            <a class="btn btn-outline" href="<?= base_url('dashboard/rooms/types'); ?>">Cancel</a>
+            <a class="btn btn-outline" href="<?= base_url('staff/dashboard/rooms/types'); ?>">Cancel</a>
         </div>
     </form>
 </section>

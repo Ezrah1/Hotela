@@ -1,7 +1,8 @@
 <?php
 $website = settings('website', []);
 $guest = $guest ?? \App\Support\GuestPortal::user();
-$slot = function () use ($filters, $availability, $guest) {
+$onlinePaymentEnabled = !empty($website['online_payment_enabled']);
+$slot = function () use ($filters, $availability, $guest, $onlinePaymentEnabled) {
     ob_start(); ?>
     <section class="booking-hero">
         <div class="container">
@@ -78,7 +79,7 @@ $slot = function () use ($filters, $availability, $guest) {
                                     <li>
                                         <strong><?= htmlspecialchars($room['display_name'] ?? $room['room_number']); ?></strong>
                                         <span><?= htmlspecialchars($room['floor'] ? 'Floor ' . $room['floor'] : ''); ?></span>
-                                        <form method="post" action="<?= base_url('booking'); ?>">
+                                        <form method="post" action="<?= base_url('booking'); ?>" class="booking-form">
                                             <input type="hidden" name="check_in" value="<?= htmlspecialchars($filters['check_in']); ?>">
                                             <input type="hidden" name="check_out" value="<?= htmlspecialchars($filters['check_out']); ?>">
                                             <input type="hidden" name="adults" value="<?= htmlspecialchars($filters['adults']); ?>">
@@ -88,6 +89,28 @@ $slot = function () use ($filters, $availability, $guest) {
                                             <input type="hidden" name="guest_name" value="<?= htmlspecialchars($guest['guest_name'] ?? ''); ?>">
                                             <input type="hidden" name="guest_email" value="<?= htmlspecialchars($guest['guest_email'] ?? ''); ?>">
                                             <input type="hidden" name="guest_phone" value="<?= htmlspecialchars($guest['guest_phone'] ?? ''); ?>">
+                                            
+                                            <?php if ($onlinePaymentEnabled): ?>
+                                            <div class="payment-method-section" style="margin: 1rem 0; padding: 1rem; background: #f8fafc; border-radius: 6px;">
+                                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b;">
+                                                    <span>Payment Method</span>
+                                                </label>
+                                                <select name="payment_method" class="payment-method-select" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem;">
+                                                    <option value="pay_on_arrival">Pay on Arrival</option>
+                                                    <option value="mpesa">M-Pesa</option>
+                                                </select>
+                                                <div class="mpesa-phone-field" style="display: none; margin-top: 0.75rem;">
+                                                    <label style="display: block; margin-bottom: 0.5rem; color: #64748b; font-size: 0.875rem;">
+                                                        <span>M-Pesa Phone Number</span>
+                                                    </label>
+                                                    <input type="tel" name="mpesa_phone" placeholder="254700000000" pattern="[0-9+]{10,15}" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem;">
+                                                    <small style="display: block; margin-top: 0.25rem; color: #64748b; font-size: 0.8rem;">Enter phone number (e.g., 254700000000 or 0700000000)</small>
+                                                </div>
+                                            </div>
+                                            <?php else: ?>
+                                            <input type="hidden" name="payment_method" value="pay_on_arrival">
+                                            <?php endif; ?>
+                                            
                                             <button class="btn btn-primary booking-submit-form" type="submit">Book Room <?= htmlspecialchars($room['room_number']); ?></button>
                                         </form>
                                     </li>
@@ -95,7 +118,7 @@ $slot = function () use ($filters, $availability, $guest) {
                             </ul>
                         <?php else: ?>
                             <p>No specific rooms free right now, but you can request this room type.</p>
-                            <form method="post" action="<?= base_url('booking'); ?>">
+                            <form method="post" action="<?= base_url('booking'); ?>" class="booking-form">
                                 <input type="hidden" name="check_in" value="<?= htmlspecialchars($filters['check_in']); ?>">
                                 <input type="hidden" name="check_out" value="<?= htmlspecialchars($filters['check_out']); ?>">
                                 <input type="hidden" name="adults" value="<?= htmlspecialchars($filters['adults']); ?>">
@@ -105,6 +128,28 @@ $slot = function () use ($filters, $availability, $guest) {
                                 <input type="hidden" name="guest_name" value="<?= htmlspecialchars($guest['guest_name'] ?? ''); ?>">
                                 <input type="hidden" name="guest_email" value="<?= htmlspecialchars($guest['guest_email'] ?? ''); ?>">
                                 <input type="hidden" name="guest_phone" value="<?= htmlspecialchars($guest['guest_phone'] ?? ''); ?>">
+                                
+                                <?php if ($onlinePaymentEnabled): ?>
+                                <div class="payment-method-section" style="margin: 1rem 0; padding: 1rem; background: #f8fafc; border-radius: 6px;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b;">
+                                        <span>Payment Method</span>
+                                    </label>
+                                    <select name="payment_method" class="payment-method-select" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem;">
+                                        <option value="pay_on_arrival">Pay on Arrival</option>
+                                        <option value="mpesa">M-Pesa</option>
+                                    </select>
+                                    <div class="mpesa-phone-field" style="display: none; margin-top: 0.75rem;">
+                                        <label style="display: block; margin-bottom: 0.5rem; color: #64748b; font-size: 0.875rem;">
+                                            <span>M-Pesa Phone Number</span>
+                                        </label>
+                                        <input type="tel" name="mpesa_phone" placeholder="254700000000" pattern="[0-9+]{10,15}" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem;">
+                                        <small style="display: block; margin-top: 0.25rem; color: #64748b; font-size: 0.8rem;">Enter phone number (e.g., 254700000000 or 0700000000)</small>
+                                    </div>
+                                </div>
+                                <?php else: ?>
+                                <input type="hidden" name="payment_method" value="pay_on_arrival">
+                                <?php endif; ?>
+                                
                                 <button class="btn btn-outline booking-submit-form" type="submit">Request this room type</button>
                             </form>
                         <?php endif; ?>
@@ -141,6 +186,31 @@ $slot = function () use ($filters, $availability, $guest) {
             };
 
             document.querySelectorAll('.booking-results form').forEach(syncForm);
+
+            // Show/hide M-Pesa phone field based on payment method selection
+            document.querySelectorAll('.payment-method-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const form = this.closest('.booking-form');
+                    const mpesaField = form.querySelector('.mpesa-phone-field');
+                    const mpesaInput = form.querySelector('input[name="mpesa_phone"]');
+                    
+                    if (this.value === 'mpesa') {
+                        mpesaField.style.display = 'block';
+                        if (mpesaInput) {
+                            mpesaInput.required = true;
+                            // Pre-fill with guest phone if available
+                            if (!mpesaInput.value && phoneInput && phoneInput.value) {
+                                mpesaInput.value = phoneInput.value.replace(/[^0-9+]/g, '');
+                            }
+                        }
+                    } else {
+                        mpesaField.style.display = 'none';
+                        if (mpesaInput) {
+                            mpesaInput.required = false;
+                        }
+                    }
+                });
+            });
         });
     </script>
     <?php

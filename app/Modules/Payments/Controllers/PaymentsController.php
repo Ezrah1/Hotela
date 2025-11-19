@@ -85,7 +85,6 @@ class PaymentsController extends Controller
 
     protected function getPosPayments(string $start, string $end, ?string $paymentMethod = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
         $params = [
             'start' => $start,
             'end' => $end,
@@ -113,11 +112,6 @@ class PaymentsController extends Controller
             $params['payment_method'] = $paymentMethod;
         }
 
-        if ($tenantId !== null) {
-            $sql .= ' AND ps.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
-
         $sql .= ' ORDER BY ps.created_at DESC';
 
         $stmt = db()->prepare($sql);
@@ -128,7 +122,6 @@ class PaymentsController extends Controller
 
     protected function getFolioPayments(string $start, string $end, ?string $paymentMethod = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
         $params = [
             'start' => $start,
             'end' => $end,
@@ -157,10 +150,6 @@ class PaymentsController extends Controller
             $params['payment_method'] = $paymentMethod;
         }
 
-        if ($tenantId !== null) {
-            $sql .= ' AND f.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
 
         $sql .= ' ORDER BY fe.created_at DESC';
 

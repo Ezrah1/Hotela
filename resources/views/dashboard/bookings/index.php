@@ -16,7 +16,7 @@ ob_start();
                 <option value="checked_out" <?= $filter === 'checked_out' ? 'selected' : ''; ?>>Checked Out</option>
                 <option value="" <?= $filter === '' ? 'selected' : ''; ?>>All</option>
             </select>
-            <a class="btn btn-outline" href="<?= base_url('dashboard/bookings/calendar-view'); ?>">Calendar</a>
+            <a class="btn btn-outline" href="<?= base_url('staff/dashboard/bookings/calendar-view'); ?>">Calendar</a>
             <a class="btn btn-outline" href="<?= base_url('booking'); ?>">Create booking</a>
         </div>
     </header>
@@ -69,15 +69,15 @@ ob_start();
                     <?php endif; ?>
                 </td>
                 <td class="booking-actions">
-                    <a class="btn btn-outline btn-small" href="<?= base_url('dashboard/bookings/edit?reservation_id=' . (int)$reservation['id']); ?>">Edit</a>
-                    <a class="btn btn-outline btn-small" href="<?= base_url('dashboard/bookings/folio?reservation_id=' . (int)$reservation['id']); ?>">Folio</a>
+                    <a class="btn btn-outline btn-small" href="<?= base_url('staff/dashboard/bookings/edit?reservation_id=' . (int)$reservation['id']); ?>">Edit</a>
+                    <a class="btn btn-outline btn-small" href="<?= base_url('staff/dashboard/bookings/folio?reservation_id=' . (int)$reservation['id']); ?>">Folio</a>
                     <?php if ($reservation['check_in_status'] === 'scheduled'): ?>
-                        <form method="post" action="<?= base_url('dashboard/bookings/check-in'); ?>" style="display: inline;">
+                        <form method="post" action="<?= base_url('staff/dashboard/bookings/check-in'); ?>" style="display: inline;">
                             <input type="hidden" name="reservation_id" value="<?= (int)$reservation['id']; ?>">
                             <button class="btn btn-primary btn-small" type="submit">Check In</button>
                         </form>
                     <?php elseif ($reservation['check_in_status'] === 'checked_in'): ?>
-                        <form method="post" action="<?= base_url('dashboard/bookings/check-out'); ?>" style="display: inline;">
+                        <form method="post" action="<?= base_url('staff/dashboard/bookings/check-out'); ?>" style="display: inline;">
                             <input type="hidden" name="reservation_id" value="<?= (int)$reservation['id']; ?>">
                             <button class="btn btn-outline btn-small" type="submit">Check Out</button>
                         </form>

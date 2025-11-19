@@ -42,13 +42,6 @@ class UserRepository
         $params = [];
         $conditions = [];
 
-        // Tenant filter
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $params['tenant_id'] = $tenantId;
-            $conditions[] = 'users.tenant_id = :tenant_id';
-        }
-
         // Role filter
         if ($roleFilter) {
             $params['role_key'] = $roleFilter;
@@ -106,13 +99,6 @@ class UserRepository
         $params = [];
         $conditions = [];
 
-        // Tenant filter
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $params['tenant_id'] = $tenantId;
-            $conditions[] = 'users.tenant_id = :tenant_id';
-        }
-
         // Role filter - use IN clause for multiple roles
         $placeholders = [];
         foreach ($roleKeys as $index => $roleKey) {
@@ -158,14 +144,7 @@ class UserRepository
             return;
         }
 
-        // Add tenant check for security
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $params['tenant_id'] = $tenantId;
-            $sql = 'UPDATE users SET ' . implode(', ', $updates) . ' WHERE id = :id AND tenant_id = :tenant_id';
-        } else {
-            $sql = 'UPDATE users SET ' . implode(', ', $updates) . ' WHERE id = :id';
-        }
+        $sql = 'UPDATE users SET ' . implode(', ', $updates) . ' WHERE id = :id';
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

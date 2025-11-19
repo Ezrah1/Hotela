@@ -3,7 +3,7 @@ $pageTitle = 'View Message | Hotela';
 $message = $message ?? null;
 
 if (!$message) {
-    header('Location: ' . base_url('dashboard/messages?error=' . urlencode('Message not found')));
+    header('Location: ' . base_url('staff/dashboard/messages?error=' . urlencode('Message not found')));
     exit;
 }
 
@@ -11,7 +11,7 @@ ob_start();
 ?>
 <section class="card">
     <header class="message-view-header">
-        <a href="<?= base_url('dashboard/messages'); ?>" class="btn btn-outline">
+        <a href="<?= base_url('staff/dashboard/messages'); ?>" class="btn btn-outline">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
@@ -20,11 +20,11 @@ ob_start();
         </a>
         <div class="header-actions">
             <?php if ($message['status'] === 'sent'): ?>
-                <a href="<?= base_url('dashboard/messages/mark-read?id=' . $message['id']); ?>" class="btn btn-outline">
+                <a href="<?= base_url('staff/dashboard/messages/mark-read?id=' . $message['id']); ?>" class="btn btn-outline">
                     Mark as Read
                 </a>
             <?php endif; ?>
-            <a href="<?= base_url('dashboard/messages/delete?id=' . $message['id']); ?>" class="btn btn-outline btn-danger" onclick="return confirm('Are you sure you want to delete this message?');">
+            <a href="<?= base_url('staff/dashboard/messages/delete?id=' . $message['id']); ?>" class="btn btn-outline btn-danger" onclick="return confirm('Are you sure you want to delete this message?');">
                 Delete
             </a>
         </div>

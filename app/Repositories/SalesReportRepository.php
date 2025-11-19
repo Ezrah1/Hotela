@@ -7,24 +7,16 @@ use PDO;
 class SalesReportRepository
 {
 	protected PDO $db;
-	protected ?int $tenantId;
 
 	public function __construct(?PDO $db = null)
 	{
 		$this->db = $db ?? db();
-		$this->tenantId = \App\Support\Tenant::id();
 	}
 
 	protected function tenantFilter(string $column, array &$params): string
 	{
-		if ($this->tenantId === null) {
-			return '';
-		}
-
-		$key = $this->paramKey($column . '_tenant_' . count($params));
-		$params[$key] = $this->tenantId;
-
-		return " AND {$column} = :{$key}";
+		// Single installation - no tenant filtering needed
+		return '';
 	}
 
 	protected function dateFilter(string $column, ?string $start, ?string $end, array &$params): string

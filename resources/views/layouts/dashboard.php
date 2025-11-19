@@ -56,7 +56,7 @@ $userRoleLabel = $roleConfig['label'] ?? ($userRoleKey ? ucfirst(str_replace('_'
             </div>
             <div class="header-right">
                 <div class="header-actions">
-                    <a href="<?= base_url('dashboard/messages'); ?>" class="header-action-btn" title="Messages">
+                    <a href="<?= base_url('staff/dashboard/messages'); ?>" class="header-action-btn" title="Messages">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                             <polyline points="22,6 12,13 2,6"></polyline>
@@ -69,7 +69,7 @@ $userRoleLabel = $roleConfig['label'] ?? ($userRoleKey ? ucfirst(str_replace('_'
                             <span class="badge"><?= $unreadMessages; ?></span>
                         <?php endif; ?>
                     </a>
-                    <a href="<?= base_url('dashboard/notifications'); ?>" class="header-action-btn" title="Notifications">
+                    <a href="<?= base_url('staff/dashboard/notifications'); ?>" class="header-action-btn" id="notificationLink" title="Notifications">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -79,7 +79,7 @@ $userRoleLabel = $roleConfig['label'] ?? ($userRoleKey ? ucfirst(str_replace('_'
                         $unreadNotifications = $notificationRepo->getUnreadCount($userRoleKey);
                         if ($unreadNotifications > 0):
                         ?>
-                            <span class="badge"><?= $unreadNotifications; ?></span>
+                            <span class="badge" id="notificationBadge"><?= $unreadNotifications; ?></span>
                         <?php endif; ?>
                     </a>
                 </div>
@@ -95,7 +95,7 @@ $userRoleLabel = $roleConfig['label'] ?? ($userRoleKey ? ucfirst(str_replace('_'
                         </svg>
                     </div>
                     <div class="user-dropdown" id="userDropdown">
-                        <a href="<?= base_url('dashboard'); ?>" class="dropdown-item">
+                        <a href="<?= base_url('staff/dashboard'); ?>" class="dropdown-item">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="3" width="7" height="7"></rect>
                                 <rect x="14" y="3" width="7" height="7"></rect>
@@ -104,7 +104,7 @@ $userRoleLabel = $roleConfig['label'] ?? ($userRoleKey ? ucfirst(str_replace('_'
                             </svg>
                             Dashboard
                         </a>
-                        <a href="<?= base_url('dashboard/messages'); ?>" class="dropdown-item">
+                        <a href="<?= base_url('staff/dashboard/messages'); ?>" class="dropdown-item">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                                 <polyline points="22,6 12,13 2,6"></polyline>
@@ -112,7 +112,7 @@ $userRoleLabel = $roleConfig['label'] ?? ($userRoleKey ? ucfirst(str_replace('_'
                             Messages
                         </a>
                         <?php if (in_array($userRoleKey, ['admin'])): ?>
-                        <a href="<?= base_url('admin/settings'); ?>" class="dropdown-item">
+                        <a href="<?= base_url('staff/admin/settings'); ?>" class="dropdown-item">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="3"></circle>
                                 <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3"></path>
@@ -121,7 +121,7 @@ $userRoleLabel = $roleConfig['label'] ?? ($userRoleKey ? ucfirst(str_replace('_'
                         </a>
                         <?php endif; ?>
                         <div class="dropdown-divider"></div>
-                        <a href="<?= base_url('logout'); ?>" class="dropdown-item dropdown-item-danger">
+                        <a href="<?= base_url('staff/logout'); ?>" class="dropdown-item dropdown-item-danger">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                                 <polyline points="16 17 21 12 16 7"></polyline>
@@ -145,28 +145,28 @@ $userRoleLabel = $roleConfig['label'] ?? ($userRoleKey ? ucfirst(str_replace('_'
                 <div class="footer-section">
                     <h4>Quick Links</h4>
                     <ul>
-                        <li><a href="<?= base_url('dashboard'); ?>">Dashboard</a></li>
-                        <li><a href="<?= base_url('dashboard/bookings'); ?>">Bookings</a></li>
-                        <li><a href="<?= base_url('dashboard/pos'); ?>">POS System</a></li>
+                        <li><a href="<?= base_url('staff/dashboard'); ?>">Dashboard</a></li>
+                        <li><a href="<?= base_url('staff/dashboard/bookings'); ?>">Bookings</a></li>
+                        <li><a href="<?= base_url('staff/dashboard/pos'); ?>">POS System</a></li>
                         <?php if (in_array($userRoleKey, ['admin'])): ?>
-                        <li><a href="<?= base_url('admin/settings'); ?>">Settings</a></li>
+                        <li><a href="<?= base_url('staff/admin/settings'); ?>">Settings</a></li>
                         <?php endif; ?>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>Support</h4>
                     <ul>
-                        <li><a href="<?= base_url('dashboard/messages'); ?>">Messages</a></li>
-                        <li><a href="<?= base_url('dashboard/announcements'); ?>">Announcements</a></li>
-                        <li><a href="<?= base_url('dashboard/notifications'); ?>">Notifications</a></li>
+                        <li><a href="<?= base_url('staff/dashboard/messages'); ?>">Messages</a></li>
+                        <li><a href="<?= base_url('staff/dashboard/announcements'); ?>">Announcements</a></li>
+                        <li><a href="<?= base_url('staff/dashboard/notifications'); ?>">Notifications</a></li>
                     </ul>
                 </div>
                 <div class="footer-section">
                     <h4>System</h4>
                     <ul>
                         <li><a href="<?= base_url(); ?>" target="_blank">View Website</a></li>
-                        <li><a href="<?= base_url('dashboard/reports/sales'); ?>">Reports</a></li>
-                        <li><a href="<?= base_url('dashboard/tasks'); ?>">Tasks</a></li>
+                        <li><a href="<?= base_url('staff/dashboard/reports/sales'); ?>">Reports</a></li>
+                        <li><a href="<?= base_url('staff/dashboard/tasks'); ?>">Tasks</a></li>
                     </ul>
                 </div>
             </div>
@@ -201,6 +201,120 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
         });
     }
+
+    // Notification polling and sound alerts
+    let lastCheckTime = Math.floor(Date.now() / 1000);
+    let notificationSound = null;
+    
+    // Create notification sound (using Web Audio API for a simple beep)
+    function createNotificationSound() {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        } catch (e) {
+            console.log('Audio not supported:', e);
+        }
+    }
+    
+    // Play notification sound
+    function playNotificationSound() {
+        createNotificationSound();
+    }
+    
+    // Show browser notification
+    function showBrowserNotification(title, message) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(title, {
+                body: message,
+                icon: '<?= asset("images/favicon.png"); ?>',
+                badge: '<?= asset("images/favicon.png"); ?>',
+                tag: 'hotela-notification',
+            });
+        } else if ('Notification' in window && Notification.permission !== 'denied') {
+            Notification.requestPermission().then(function(permission) {
+                if (permission === 'granted') {
+                    new Notification(title, {
+                        body: message,
+                        icon: '<?= asset("images/favicon.png"); ?>',
+                        badge: '<?= asset("images/favicon.png"); ?>',
+                        tag: 'hotela-notification',
+                    });
+                }
+            });
+        }
+    }
+    
+    // Update notification badge
+    function updateNotificationBadge(count) {
+        const badge = document.getElementById('notificationBadge');
+        const notificationLink = document.getElementById('notificationLink');
+        
+        if (count > 0) {
+            if (badge) {
+                badge.textContent = count;
+            } else if (notificationLink) {
+                const newBadge = document.createElement('span');
+                newBadge.id = 'notificationBadge';
+                newBadge.className = 'badge';
+                newBadge.textContent = count;
+                notificationLink.appendChild(newBadge);
+            }
+        } else {
+            if (badge) {
+                badge.remove();
+            }
+        }
+    }
+    
+    // Check for new notifications
+    function checkNotifications() {
+        fetch('<?= base_url("staff/dashboard/notifications/check"); ?>?last_check=' + lastCheckTime)
+            .then(response => response.json())
+            .then(data => {
+                if (data.unread_count !== undefined) {
+                    updateNotificationBadge(data.unread_count);
+                }
+                
+                // If there are new notifications, play sound and show browser notification
+                if (data.new_notifications && data.new_notifications.length > 0) {
+                    playNotificationSound();
+                    
+                    // Show notification for the first new notification
+                    const firstNotification = data.new_notifications[0];
+                    showBrowserNotification(firstNotification.title, firstNotification.message);
+                }
+                
+                // Update last check time
+                if (data.timestamp) {
+                    lastCheckTime = data.timestamp;
+                }
+            })
+            .catch(error => {
+                console.error('Error checking notifications:', error);
+            });
+    }
+    
+    // Request notification permission on page load
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    
+    // Check notifications immediately, then every 10 seconds
+    checkNotifications();
+    setInterval(checkNotifications, 10000);
 });
 </script>
 <script src="<?= asset('js/image-upload.js'); ?>"></script>

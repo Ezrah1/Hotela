@@ -1,13 +1,6 @@
 <?php
 $integrations = $settings['integrations'] ?? [];
 ?>
-<fieldset>
-    <legend>M-Pesa</legend>
-    <label>
-        <span>M-Pesa PayBill / Till</span>
-        <input type="text" name="mpesa_paybill" value="<?= htmlspecialchars($integrations['mpesa_paybill'] ?? ''); ?>">
-    </label>
-</fieldset>
 
 <fieldset>
     <legend>SMS</legend>

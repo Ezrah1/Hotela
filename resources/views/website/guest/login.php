@@ -3,13 +3,14 @@ $website = settings('website', []);
 $slot = function () use ($redirect) {
     $error = $_GET['error'] ?? null;
     ob_start(); ?>
-    <section class="page-hero">
+    <section class="page-hero page-hero-simple">
         <div class="container">
             <h1>Guest Portal</h1>
             <p>Access your bookings, dining orders, and concierge notes in one place.</p>
         </div>
     </section>
-    <section class="container portal-auth">
+    <section class="container portal-section">
+        <div class="portal-auth">
         <article class="card">
             <h2>Sign in</h2>
             <p>Use your booking reference plus either the email or phone number used during reservation.</p>
@@ -40,6 +41,7 @@ $slot = function () use ($redirect) {
                 <li>Fast rebooking using saved preferences.</li>
             </ul>
         </article>
+        </div>
     </section>
     <?php
     return ob_get_clean();

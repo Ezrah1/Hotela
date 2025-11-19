@@ -71,7 +71,7 @@ class FinanceReportController extends Controller
 
     protected function getBookingRevenue(string $start, string $end): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'start' => $start,
             'end' => $end,
@@ -90,10 +90,7 @@ class FinanceReportController extends Controller
             AND status IN ('confirmed', 'checked_in', 'checked_out')
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = db()->prepare($sql);
         $stmt->execute($params);
@@ -111,7 +108,7 @@ class FinanceReportController extends Controller
 
     protected function getBookingPaymentBreakdown(string $start, string $end): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'start' => $start,
             'end' => $end,
@@ -127,10 +124,7 @@ class FinanceReportController extends Controller
             AND status IN ('confirmed', 'checked_in', 'checked_out')
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' GROUP BY payment_status';
 
@@ -142,15 +136,12 @@ class FinanceReportController extends Controller
 
     protected function getOutstandingBalance(): float
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = 'SELECT SUM(balance) as total FROM folios WHERE balance > 0 AND status = "open"';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = db()->prepare($sql);
         $stmt->execute($params);

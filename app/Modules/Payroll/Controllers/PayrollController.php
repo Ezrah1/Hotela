@@ -136,7 +136,7 @@ class PayrollController extends Controller
 
     protected function getPayrolls(int $year, int $month, ?string $status = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'year' => $year,
             'month' => $month,
@@ -155,11 +155,6 @@ class PayrollController extends Controller
             $params['status'] = $status;
         }
 
-        if ($tenantId !== null) {
-            $sql .= ' AND payroll.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
-
         $sql .= ' ORDER BY users.name ASC';
 
         $stmt = db()->prepare($sql);
@@ -170,7 +165,7 @@ class PayrollController extends Controller
 
     protected function getPayroll(int $payrollId): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $payrollId];
 
         $sql = "
@@ -178,14 +173,8 @@ class PayrollController extends Controller
             FROM payroll
             INNER JOIN users ON users.id = payroll.user_id
             WHERE payroll.id = :id
+            LIMIT 1
         ";
-
-        if ($tenantId !== null) {
-            $sql .= ' AND payroll.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
-
-        $sql .= ' LIMIT 1';
 
         $stmt = db()->prepare($sql);
         $stmt->execute($params);
@@ -196,7 +185,7 @@ class PayrollController extends Controller
 
     protected function getPayrollForPeriod(int $userId, int $year, int $month): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'user_id' => $userId,
             'year' => $year,
@@ -210,10 +199,7 @@ class PayrollController extends Controller
             AND MONTH(pay_period_end) = :month
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' LIMIT 1';
 
@@ -226,7 +212,7 @@ class PayrollController extends Controller
 
     protected function createPayroll(int $userId, int $year, int $month): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
 
         // Calculate pay period dates
         $payPeriodStart = date('Y-m-01', mktime(0, 0, 0, $month, 1, $year));
@@ -237,13 +223,12 @@ class PayrollController extends Controller
         $baseSalary = 0; // Would be fetched from employee salary records
 
         $sql = "
-            INSERT INTO payroll (tenant_id, user_id, pay_period_start, pay_period_end, basic_salary, allowances, deductions, net_salary, status, created_at, updated_at)
-            VALUES (:tenant_id, :user_id, :pay_period_start, :pay_period_end, :basic_salary, 0, 0, :basic_salary, 'pending', NOW(), NOW())
+            INSERT INTO payroll (user_id, pay_period_start, pay_period_end, basic_salary, allowances, deductions, net_salary, status, created_at, updated_at)
+            VALUES (:user_id, :pay_period_start, :pay_period_end, :basic_salary, 0, 0, :basic_salary, 'pending', NOW(), NOW())
         ";
 
         $stmt = db()->prepare($sql);
         $stmt->execute([
-            'tenant_id' => $tenantId,
             'user_id' => $userId,
             'pay_period_start' => $payPeriodStart,
             'pay_period_end' => $payPeriodEnd,

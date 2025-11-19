@@ -17,17 +17,14 @@ class RolesController extends Controller
         unset($rolesConfig['super_admin']); // Don't show super_admin to tenant admins
         
         // Get role counts from database (tenant-scoped)
-        $tenantId = \App\Support\Tenant::id();
+        
         $roleCounts = [];
         
         foreach (array_keys($rolesConfig) as $roleKey) {
             $params = ['role_key' => $roleKey];
             $sql = 'SELECT COUNT(*) as count FROM users WHERE role_key = :role_key AND status = "active"';
             
-            if ($tenantId !== null) {
-                $sql .= ' AND tenant_id = :tenant_id';
-                $params['tenant_id'] = $tenantId;
-            }
+            
             
             $stmt = db()->prepare($sql);
             $stmt->execute($params);

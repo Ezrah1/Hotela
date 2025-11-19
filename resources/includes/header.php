@@ -20,16 +20,15 @@
             <img src="<?= asset($logoPath); ?>" alt="<?= htmlspecialchars($brandName); ?> logo">
         </a>
         <nav class="nav">
-            <a href="<?= base_url('/'); ?>">Home</a>
-            <a href="<?= base_url('booking'); ?>">Booking</a>
-            <a href="#modules">Modules</a>
-            <a href="#contact">Contact</a>
+            <a href="<?= base_url('features'); ?>">Features</a>
+            <a href="<?= base_url('modules'); ?>">Modules</a>
+            <a href="<?= base_url('contact-developer'); ?>">Contact Developer</a>
             <?php if ($loggedIn): ?>
-                <a href="<?= base_url('dashboard'); ?>">Dashboard</a>
-                <a href="<?= base_url('dashboard/pos'); ?>">POS</a>
-                <a href="<?= base_url('logout'); ?>">Logout</a>
+                <a href="<?= base_url('staff/dashboard'); ?>">Dashboard</a>
+                <a href="<?= base_url('staff/dashboard/pos'); ?>">POS</a>
+                <a href="<?= base_url('staff/logout'); ?>">Logout</a>
             <?php else: ?>
-                <a href="<?= base_url('login'); ?>">Staff Login</a>
+                <a href="<?= base_url('staff/login'); ?>">Staff Login</a>
             <?php endif; ?>
         </nav>
     </div>

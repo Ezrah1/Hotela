@@ -66,10 +66,26 @@ class InventoryController extends Controller
     {
         Auth::requireRoles(['admin', 'operation_manager', 'finance_manager', 'cashier', 'service_agent', 'kitchen', 'housekeeping', 'ground', 'security']);
 
+        $type = $_GET['type'] ?? null;
+        $status = $_GET['status'] ?? null;
+        $user = Auth::user();
+        $userRole = $user['role_key'] ?? '';
+
+        $allRequisitions = $this->requisitions->all($type, $status);
+        
+        // Filter by user role if not admin/ops/finance
+        if (!in_array($userRole, ['admin', 'operation_manager', 'finance_manager', 'director'], true)) {
+            $allRequisitions = array_filter($allRequisitions, function($req) use ($user) {
+                return ($req['requested_by'] ?? null) == ($user['id'] ?? null);
+            });
+        }
+
         $this->view('dashboard/inventory/requisitions', [
-            'requisitions' => $this->requisitions->all(),
+            'requisitions' => $allRequisitions,
             'inventoryItems' => $this->inventory->allItems(),
             'locations' => $this->inventoryService->locations(),
+            'userRole' => $userRole,
+            'filters' => ['type' => $type, 'status' => $status],
         ]);
     }
 
@@ -104,9 +120,10 @@ class InventoryController extends Controller
             return;
         }
 
-        $this->requisitions->create((int)(Auth::user()['id'] ?? 0), $notes, $items);
+        $urgency = $request->input('urgency', 'medium');
+        $this->requisitions->create((int)(Auth::user()['id'] ?? 0), $notes, $items, 'staff', $urgency);
 
-        header('Location: ' . base_url('dashboard/inventory/requisitions?success=1'));
+        header('Location: ' . base_url('staff/dashboard/inventory/requisitions?success=Requisition%20created'));
     }
 
     public function updateRequisitionStatus(Request $request): void
@@ -126,11 +143,18 @@ class InventoryController extends Controller
             // Only Operations Manager (or Admin) approves
             $roleKey = Auth::user()['role_key'] ?? (Auth::user()['role'] ?? '');
             if (!in_array($roleKey, ['operation_manager', 'admin'], true)) {
-                header('Location: ' . base_url('dashboard/inventory/requisitions?error=Only%20Operations%20can%20approve'));
+                header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=Only%20Operations%20can%20approve'));
                 return;
             }
             if ($supplier === '') {
-                header('Location: ' . base_url('dashboard/inventory/requisitions?error=Supplier%20required'));
+                header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=Supplier%20required'));
+                return;
+            }
+            // Look up supplier by name to get ID
+            $supplierRepo = new \App\Repositories\SupplierRepository();
+            $supplierData = $supplierRepo->findByName($supplier);
+            if (!$supplierData) {
+                header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=Supplier%20not%20found'));
                 return;
             }
             $items = $this->requisitions->items($id);
@@ -139,19 +163,19 @@ class InventoryController extends Controller
                 'quantity' => $item['quantity'],
                 'unit_cost' => $item['unit_cost'] ?? ($item['avg_cost'] ?? 0),
             ], $items);
-            $this->requisitions->createPurchaseOrder($id, $supplier, $mapped);
+            $this->requisitions->createPurchaseOrder($id, (int)$supplierData['id'], $mapped);
         } elseif ($status === 'funded') {
             // Only Finance Manager (or Admin) funds
             $roleKey = Auth::user()['role_key'] ?? (Auth::user()['role'] ?? '');
             if (!in_array($roleKey, ['finance_manager', 'admin'], true)) {
-                header('Location: ' . base_url('dashboard/inventory/requisitions?error=Only%20Finance%20can%20fund'));
+                header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=Only%20Finance%20can%20fund'));
                 return;
             }
         }
 
         $this->requisitions->updateStatus($id, $status);
 
-        header('Location: ' . base_url('dashboard/inventory/requisitions'));
+        header('Location: ' . base_url('staff/dashboard/inventory/requisitions'));
     }
 
     public function receivePurchaseOrder(Request $request): void
@@ -204,7 +228,115 @@ class InventoryController extends Controller
         // Mark requisition as received/completed
         $this->requisitions->updateStatus($reqId, 'received');
 
-        header('Location: ' . base_url('dashboard/inventory/requisitions?success=released'));
+        header('Location: ' . base_url('staff/dashboard/inventory/requisitions?success=released'));
+    }
+
+    public function verifyOpsRequisition(Request $request): void
+    {
+        Auth::requireRoles(['admin', 'operation_manager', 'director']);
+
+        $id = (int)$request->input('id');
+        $action = $request->input('action'); // 'approve' or 'reject'
+        $opsNotes = trim($request->input('ops_notes', ''));
+        $costEstimate = $request->input('cost_estimate') ? (float)$request->input('cost_estimate') : null;
+
+        if (!$id || !$action) {
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=Invalid%20request'));
+            return;
+        }
+
+        try {
+            $user = Auth::user();
+            $this->requisitions->verifyOps($id, (int)$user['id'], $opsNotes, $action === 'approve', $costEstimate);
+            $message = $action === 'approve' ? 'Requisition%20verified%20by%20Ops' : 'Requisition%20rejected';
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?success=' . $message));
+        } catch (\Exception $e) {
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=' . urlencode($e->getMessage())));
+        }
+    }
+
+    public function approveFinanceRequisition(Request $request): void
+    {
+        Auth::requireRoles(['admin', 'finance_manager', 'director']);
+
+        $id = (int)$request->input('id');
+        $action = $request->input('action'); // 'approve' or 'reject'
+        $financeNotes = trim($request->input('finance_notes', ''));
+
+        if (!$id || !$action) {
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=Invalid%20request'));
+            return;
+        }
+
+        try {
+            $user = Auth::user();
+            if ($action === 'approve') {
+                $this->requisitions->approveFinance($id, (int)$user['id'], $financeNotes);
+                $message = 'Requisition%20approved%20by%20Finance';
+            } else {
+                $this->requisitions->rejectFinance($id, (int)$user['id'], $financeNotes);
+                $message = 'Requisition%20rejected%20by%20Finance';
+            }
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?success=' . $message));
+        } catch (\Exception $e) {
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=' . urlencode($e->getMessage())));
+        }
+    }
+
+    public function assignSupplierRequisition(Request $request): void
+    {
+        Auth::requireRoles(['admin', 'operation_manager', 'finance_manager', 'director']);
+
+        $id = (int)$request->input('id');
+        $supplierId = (int)$request->input('supplier_id');
+
+        if (!$id || !$supplierId) {
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=Invalid%20request'));
+            return;
+        }
+
+        try {
+            $this->requisitions->assignSupplier($id, $supplierId);
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?success=Supplier%20assigned'));
+        } catch (\Exception $e) {
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=' . urlencode($e->getMessage())));
+        }
+    }
+
+    public function createPOFromRequisition(Request $request): void
+    {
+        Auth::requireRoles(['admin', 'operation_manager', 'finance_manager', 'director']);
+
+        $id = (int)$request->input('id');
+        $supplierId = (int)$request->input('supplier_id');
+        $expectedDate = $request->input('expected_date');
+
+        if (!$id || !$supplierId) {
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=Invalid%20request'));
+            return;
+        }
+
+        try {
+            $requisition = $this->requisitions->find($id);
+            if (!$requisition || $requisition['status'] !== 'approved') {
+                header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=Requisition%20must%20be%20approved'));
+                return;
+            }
+
+            $items = [];
+            foreach ($requisition['items'] as $item) {
+                $items[] = [
+                    'inventory_item_id' => (int)$item['inventory_item_id'],
+                    'quantity' => (float)$item['quantity'],
+                    'unit_cost' => (float)($item['unit_cost'] ?? 0),
+                ];
+            }
+
+            $this->requisitions->createPurchaseOrder($id, $supplierId, $items, $expectedDate);
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?success=Purchase%20Order%20created'));
+        } catch (\Exception $e) {
+            header('Location: ' . base_url('staff/dashboard/inventory/requisitions?error=' . urlencode($e->getMessage())));
+        }
     }
 
     public function autoImport(Request $request): void
@@ -248,6 +380,171 @@ class InventoryController extends Controller
         }
 
         header('Location: ' . base_url('dashboard/inventory?success=autoimport&created=' . $created . '&mapped=' . $mapped));
+    }
+
+    public function createItem(): void
+    {
+        Auth::requireRoles(['admin', 'operation_manager']);
+        
+        $categories = $this->inventory->categories();
+        
+        $this->view('dashboard/inventory/item-form', [
+            'item' => null,
+            'categories' => $categories,
+            'mode' => 'create'
+        ]);
+    }
+
+    public function editItem(Request $request): void
+    {
+        Auth::requireRoles(['admin', 'operation_manager']);
+        
+        $itemId = (int)$request->input('id');
+        if (!$itemId) {
+            header('Location: ' . base_url('staff/dashboard/inventory?error=Invalid%20item'));
+            return;
+        }
+        
+        $item = $this->inventory->getItem($itemId);
+        if (!$item) {
+            header('Location: ' . base_url('staff/dashboard/inventory?error=Item%20not%20found'));
+            return;
+        }
+        
+        $categories = $this->inventory->categories();
+        
+        $this->view('dashboard/inventory/item-form', [
+            'item' => $item,
+            'categories' => $categories,
+            'mode' => 'edit'
+        ]);
+    }
+
+    public function storeItem(Request $request): void
+    {
+        Auth::requireRoles(['admin', 'operation_manager']);
+        
+        $name = trim($request->input('name', ''));
+        $sku = trim($request->input('sku', ''));
+        $unit = trim($request->input('unit', 'unit'));
+        $category = trim($request->input('category', ''));
+        $reorderPoint = (float)$request->input('reorder_point', 0);
+        $avgCost = (float)$request->input('avg_cost', 0);
+        $isPosItem = (int)$request->input('is_pos_item', 0);
+        $status = $request->input('status', 'active');
+        $allowNegative = (int)$request->input('allow_negative', 0);
+        
+        if (empty($name)) {
+            header('Location: ' . base_url('staff/dashboard/inventory/item/create?error=Name%20is%20required'));
+            return;
+        }
+        
+        // Generate SKU if not provided
+        if (empty($sku)) {
+            $sku = 'INV-' . strtoupper(substr(preg_replace('/[^A-Z0-9]/i', '', $name), 0, 12)) . '-' . time();
+        }
+        
+        // Check if SKU already exists
+        $existing = $this->inventory->findBySku($sku);
+        if ($existing) {
+            header('Location: ' . base_url('staff/dashboard/inventory/item/create?error=SKU%20already%20exists'));
+            return;
+        }
+        
+        try {
+            $itemId = $this->inventory->createItem([
+                'name' => $name,
+                'sku' => $sku,
+                'unit' => $unit,
+                'category' => $category ?: null,
+                'reorder_point' => $reorderPoint,
+                'avg_cost' => $avgCost,
+                'is_pos_item' => $isPosItem,
+                'status' => $status,
+                'allow_negative' => $allowNegative,
+            ]);
+            
+            header('Location: ' . base_url('staff/dashboard/inventory?success=Item%20created'));
+        } catch (\Exception $e) {
+            header('Location: ' . base_url('staff/dashboard/inventory/item/create?error=' . urlencode($e->getMessage())));
+        }
+    }
+
+    public function updateItem(Request $request): void
+    {
+        Auth::requireRoles(['admin', 'operation_manager']);
+        
+        $itemId = (int)$request->input('id');
+        if (!$itemId) {
+            header('Location: ' . base_url('staff/dashboard/inventory?error=Invalid%20item'));
+            return;
+        }
+        
+        $item = $this->inventory->getItem($itemId);
+        if (!$item) {
+            header('Location: ' . base_url('staff/dashboard/inventory?error=Item%20not%20found'));
+            return;
+        }
+        
+        $name = trim($request->input('name', ''));
+        $sku = trim($request->input('sku', ''));
+        $unit = trim($request->input('unit', 'unit'));
+        $category = trim($request->input('category', ''));
+        $reorderPoint = (float)$request->input('reorder_point', 0);
+        $avgCost = (float)$request->input('avg_cost', 0);
+        $isPosItem = (int)$request->input('is_pos_item', 0);
+        $status = $request->input('status', 'active');
+        $allowNegative = (int)$request->input('allow_negative', 0);
+        
+        if (empty($name)) {
+            header('Location: ' . base_url('staff/dashboard/inventory/item/edit?id=' . $itemId . '&error=Name%20is%20required'));
+            return;
+        }
+        
+        // Check if SKU already exists (excluding current item)
+        if (!empty($sku)) {
+            $existing = $this->inventory->findBySku($sku);
+            if ($existing && (int)$existing['id'] !== $itemId) {
+                header('Location: ' . base_url('staff/dashboard/inventory/item/edit?id=' . $itemId . '&error=SKU%20already%20exists'));
+                return;
+            }
+        }
+        
+        try {
+            $this->inventory->updateItem($itemId, [
+                'name' => $name,
+                'sku' => $sku ?: $item['sku'],
+                'unit' => $unit,
+                'category' => $category ?: null,
+                'reorder_point' => $reorderPoint,
+                'avg_cost' => $avgCost,
+                'is_pos_item' => $isPosItem,
+                'status' => $status,
+                'allow_negative' => $allowNegative,
+            ]);
+            
+            header('Location: ' . base_url('staff/dashboard/inventory?success=Item%20updated'));
+        } catch (\Exception $e) {
+            header('Location: ' . base_url('staff/dashboard/inventory/item/edit?id=' . $itemId . '&error=' . urlencode($e->getMessage())));
+        }
+    }
+
+    public function deleteItem(Request $request): void
+    {
+        Auth::requireRoles(['admin', 'operation_manager']);
+        
+        $itemId = (int)$request->input('id');
+        if (!$itemId) {
+            header('Location: ' . base_url('staff/dashboard/inventory?error=Invalid%20item'));
+            return;
+        }
+        
+        try {
+            $this->inventory->deleteItem($itemId);
+            header('Location: ' . base_url('staff/dashboard/inventory?success=Item%20deleted'));
+        } catch (\Exception $e) {
+            header('Location: ' . base_url('staff/dashboard/inventory?error=' . urlencode($e->getMessage())));
+        }
     }
 }
 

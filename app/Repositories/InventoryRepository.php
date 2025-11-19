@@ -15,7 +15,7 @@ class InventoryRepository
 
     public function deduct(int $inventoryItemId, int $locationId, float $quantity, string $reference, string $notes = '', string $type = 'sale'): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
 
         // Capture old quantity for logging
         $oldQty = $this->level($inventoryItemId, $locationId);
@@ -27,28 +27,23 @@ class InventoryRepository
             SET il.quantity = il.quantity - :qty
             WHERE il.item_id = :item AND il.location_id = :location
         ';
-        if ($tenantId !== null) {
-            $sql .= ' AND ii.tenant_id = :tenant';
-        }
+        
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':qty', $quantity);
         $stmt->bindValue(':item', $inventoryItemId, PDO::PARAM_INT);
         $stmt->bindValue(':location', $locationId, PDO::PARAM_INT);
-        if ($tenantId !== null) {
-            $stmt->bindValue(':tenant', $tenantId, PDO::PARAM_INT);
-        }
+        
         $stmt->execute();
 
         $newQty = $this->level($inventoryItemId, $locationId);
 
         $movementSql = '
-            INSERT INTO inventory_movements (tenant_id, item_id, location_id, type, quantity, reference, notes, old_quantity, new_quantity, user_id, role_key)
-            VALUES (:tenant, :item, :location, :type, :quantity, :reference, :notes, :old_qty, :new_qty, :user_id, :role_key)
+            INSERT INTO inventory_movements (item_id, location_id, type, quantity, reference, notes, old_quantity, new_quantity, user_id, role_key)
+            VALUES (:item, :location, :type, :quantity, :reference, :notes, :old_qty, :new_qty, :user_id, :role_key)
         ';
         $movementStmt = $this->db->prepare($movementSql);
         $user = \App\Support\Auth::user() ?? [];
         $movementStmt->execute([
-            'tenant' => $tenantId,
             'item' => $inventoryItemId,
             'location' => $locationId,
             'type' => $type,
@@ -60,6 +55,15 @@ class InventoryRepository
             'user_id' => $user['id'] ?? null,
             'role_key' => $user['role_key'] ?? ($user['role'] ?? null),
         ]);
+
+        // Check if automatic requisition is needed
+        try {
+            $autoReqService = new \App\Services\AutoRequisitionService();
+            $autoReqService->checkAndCreateRequisition($inventoryItemId, $locationId, $newQty);
+        } catch (\Exception $e) {
+            // Log error but don't fail the deduction
+            error_log('Auto requisition check failed: ' . $e->getMessage());
+        }
     }
 
     public function getBySku(string $sku): ?array
@@ -82,13 +86,10 @@ class InventoryRepository
 
     public function reorderPoint(int $itemId): float
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $sql = 'SELECT reorder_point FROM inventory_items WHERE id = :item';
         $params = ['item' => $itemId];
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant';
-            $params['tenant'] = $tenantId;
-        }
+        
         $sql .= ' LIMIT 1';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -99,7 +100,7 @@ class InventoryRepository
 
     public function lowStockItems(int $limit = 5): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $sql = '
             SELECT inventory_items.name, inventory_items.sku, inventory_items.reorder_point,
                    inventory_levels.quantity, inventory_locations.name AS location
@@ -109,9 +110,7 @@ class InventoryRepository
             WHERE inventory_levels.quantity <= inventory_items.reorder_point
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND inventory_items.tenant_id = :tenant';
-        }
+        
 
         $sql .= '
             ORDER BY inventory_levels.quantity ASC
@@ -119,9 +118,7 @@ class InventoryRepository
         ';
 
         $stmt = $this->db->prepare($sql);
-        if ($tenantId !== null) {
-            $stmt->bindValue(':tenant', $tenantId, PDO::PARAM_INT);
-        }
+        
         $stmt->execute();
 
         return $stmt->fetchAll();
@@ -129,7 +126,7 @@ class InventoryRepository
 
     public function inventoryValuation(): float
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $sql = '
             SELECT SUM(inventory_levels.quantity * inventory_items.avg_cost) AS total_value
             FROM inventory_levels
@@ -137,10 +134,7 @@ class InventoryRepository
         ';
         $params = [];
 
-        if ($tenantId !== null) {
-            $sql .= ' WHERE inventory_items.tenant_id = :tenant';
-            $params['tenant'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -150,7 +144,7 @@ class InventoryRepository
 
     public function addStock(int $inventoryItemId, int $locationId, float $quantity, string $reference, string $notes = '', string $type = 'purchase'): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $stmt = $this->db->prepare('
             INSERT INTO inventory_levels (item_id, location_id, quantity)
             VALUES (:item, :location, :qty)
@@ -164,12 +158,11 @@ class InventoryRepository
 
         $currentQty = $this->level($inventoryItemId, $locationId);
         $movementStmt = $this->db->prepare('
-            INSERT INTO inventory_movements (tenant_id, item_id, location_id, type, quantity, reference, notes, old_quantity, new_quantity, user_id, role_key)
-            VALUES (:tenant, :item, :location, :type, :quantity, :reference, :notes, :old_qty, :new_qty, :user_id, :role_key)
+            INSERT INTO inventory_movements (item_id, location_id, type, quantity, reference, notes, old_quantity, new_quantity, user_id, role_key)
+            VALUES (:item, :location, :type, :quantity, :reference, :notes, :old_qty, :new_qty, :user_id, :role_key)
         ');
         $user = \App\Support\Auth::user() ?? [];
         $movementStmt->execute([
-            'tenant' => $tenantId,
             'item' => $inventoryItemId,
             'location' => $locationId,
             'type' => $type,
@@ -185,13 +178,10 @@ class InventoryRepository
 
     public function allItems(): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $sql = 'SELECT id, name, sku, unit FROM inventory_items';
         $params = [];
-        if ($tenantId !== null) {
-            $sql .= ' WHERE tenant_id = :tenant';
-            $params['tenant'] = $tenantId;
-        }
+        
         $sql .= ' ORDER BY name';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -200,13 +190,10 @@ class InventoryRepository
 
     public function getItem(int $itemId): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $sql = 'SELECT * FROM inventory_items WHERE id = :id';
         $params = ['id' => $itemId];
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant';
-            $params['tenant'] = $tenantId;
-        }
+        
         $sql .= ' LIMIT 1';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -226,16 +213,57 @@ class InventoryRepository
 
     public function locations(): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $sql = 'SELECT * FROM inventory_locations';
         $params = [];
-        if ($tenantId !== null) {
-            $sql .= ' WHERE tenant_id = :tenant';
-            $params['tenant'] = $tenantId;
-        }
+        
         $sql .= ' ORDER BY name';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Find the best location for an inventory item (location with highest stock, or first available)
+     */
+    public function findBestLocationForItem(int $inventoryItemId): ?int
+    {
+        $sql = '
+            SELECT location_id, quantity 
+            FROM inventory_levels 
+            WHERE item_id = :item_id AND quantity > 0
+            ORDER BY quantity DESC
+            LIMIT 1
+        ';
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['item_id' => $inventoryItemId]);
+        $result = $stmt->fetch();
+        
+        if ($result) {
+            return (int)$result['location_id'];
+        }
+        
+        // If no location has stock, return the first location (or null if no locations exist)
+        $locations = $this->locations();
+        return !empty($locations) ? (int)$locations[0]['id'] : null;
+    }
+
+    /**
+     * Get locations with stock for a specific inventory item
+     */
+    public function getLocationsWithStock(int $inventoryItemId): array
+    {
+        $sql = '
+            SELECT il.location_id, il.quantity, loc.name AS location_name
+            FROM inventory_levels il
+            INNER JOIN inventory_locations loc ON loc.id = il.location_id
+            WHERE il.item_id = :item_id AND il.quantity > 0
+            ORDER BY il.quantity DESC
+        ';
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['item_id' => $inventoryItemId]);
         return $stmt->fetchAll();
     }
 
@@ -244,7 +272,7 @@ class InventoryRepository
      */
     public function itemsWithStock(?string $category = null, ?string $search = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
         $sql = '
             SELECT ii.id, ii.name, ii.sku, ii.unit, ii.reorder_point, ii.category,
@@ -253,10 +281,7 @@ class InventoryRepository
             LEFT JOIN inventory_levels il ON il.item_id = ii.id
             WHERE 1=1
         ';
-        if ($tenantId !== null) {
-            $sql .= ' AND ii.tenant_id = :tenant';
-            $params['tenant'] = $tenantId;
-        }
+        
         if ($category !== null && $category !== '') {
             $sql .= ' AND ii.category = :category';
             $params['category'] = $category;
@@ -279,13 +304,10 @@ class InventoryRepository
      */
     public function categories(): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
         $sql = "SELECT DISTINCT category FROM inventory_items WHERE category IS NOT NULL AND category <> ''";
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant';
-            $params['tenant'] = $tenantId;
-        }
+        
         $sql .= ' ORDER BY category';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -298,40 +320,59 @@ class InventoryRepository
      */
     public function posEnabledByCategory(?bool $hideUnavailable = false): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
+        // Query to get POS items with their inventory mappings
+        // We need POS item IDs, not inventory item IDs
+        // This query gets all POS items, whether they have inventory mappings or not
         $sql = "
-            SELECT ii.id, ii.name, ii.sku, ii.category, ii.image,
-                   COALESCE(SUM(il.quantity), 0) AS stock,
-                   COALESCE(MIN(ii.allow_negative), 0) AS allow_negative,
-                   COALESCE(MAX(pi.price), 0) AS price
-            FROM inventory_items ii
+            SELECT 
+                pi.id AS pos_item_id,
+                pi.name AS pos_name,
+                pi.price AS pos_price,
+                pi.sku AS pos_sku,
+                pc.name AS pos_category_name,
+                ii.id AS inventory_item_id,
+                ii.name AS inventory_name,
+                ii.category AS inventory_category,
+                ii.image,
+                COALESCE(SUM(il.quantity), 0) AS stock,
+                COALESCE(MIN(ii.allow_negative), 0) AS allow_negative
+            FROM pos_items pi
+            LEFT JOIN pos_categories pc ON pc.id = pi.category_id
+            LEFT JOIN pos_item_components pic ON pic.pos_item_id = pi.id
+            LEFT JOIN inventory_items ii ON ii.id = pic.inventory_item_id AND ii.status = 'active'
             LEFT JOIN inventory_levels il ON il.item_id = ii.id
-            LEFT JOIN pos_item_components pic ON pic.inventory_item_id = ii.id
-            LEFT JOIN pos_items pi ON pi.id = pic.pos_item_id
-            WHERE ii.status = 'active' AND (ii.is_pos_item = 1 OR pic.id IS NOT NULL)
+            GROUP BY pi.id, pi.name, pi.price, pi.sku, pc.name, ii.id, ii.name, ii.category, ii.image
+            HAVING pos_item_id IS NOT NULL
         ";
-        if ($tenantId !== null) {
-            $sql .= ' AND ii.tenant_id = :tenant';
-            $params['tenant'] = $tenantId;
-        }
-        $sql .= '
-            GROUP BY ii.id, ii.name, ii.sku, ii.category, ii.image
-            ORDER BY ii.category, ii.name
-        ';
+        
+        $sql .= ' ORDER BY COALESCE(ii.category, pc.name, "General"), pi.name';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
         $grouped = [];
         foreach ($rows as $row) {
-            $inStock = ((float)$row['stock'] > 0) || ((int)$row['allow_negative'] === 1);
+            // Use POS item ID, not inventory item ID
+            $posItemId = (int)$row['pos_item_id'];
+            if (!$posItemId) {
+                continue; // Skip if no POS item ID
+            }
+            
+            // For items without inventory mapping, they're always "in stock"
+            $hasInventoryMapping = !empty($row['inventory_item_id']);
+            $inStock = $hasInventoryMapping 
+                ? (((float)$row['stock'] > 0) || ((int)$row['allow_negative'] === 1))
+                : true; // POS items without inventory are always available
+            
             if ($hideUnavailable && !$inStock) {
                 continue;
             }
 
             // Map back-of-house categories into front-of-house POS groups
-            $rawCat = trim((string)($row['category'] ?? ''));
+            // Use inventory category if available, otherwise POS category, otherwise "General"
+            $rawCat = trim((string)($row['inventory_category'] ?? $row['pos_category_name'] ?? ''));
             if ($rawCat === 'Kitchen') {
                 $rawCat = 'Food';
             } elseif ($rawCat === 'Bar') {
@@ -345,12 +386,19 @@ class InventoryRepository
                     'items' => [],
                 ];
             }
+            
+            // Use POS item details (name, price, sku from pos_items table)
+            $itemName = $row['pos_name'];
+            $itemPrice = (float)$row['pos_price'];
+            $itemSku = $row['pos_sku'] ?? '';
+            $itemImage = $row['image'] ?? null;
+            
             $grouped[$cat]['items'][] = [
-                'id' => (int)$row['id'],
-                'name' => $row['name'],
-                'sku' => $row['sku'],
-                'image' => $row['image'],
-                'price' => (float)$row['price'],
+                'id' => $posItemId, // POS item ID, not inventory item ID
+                'name' => $itemName,
+                'sku' => $itemSku,
+                'image' => $itemImage,
+                'price' => $itemPrice,
                 'in_stock' => $inStock,
                 'stock' => (float)$row['stock'],
             ];
@@ -361,13 +409,10 @@ class InventoryRepository
 
     public function findBySku(string $sku): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $sql = 'SELECT * FROM inventory_items WHERE sku = :sku';
         $params = ['sku' => $sku];
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant';
-            $params['tenant'] = $tenantId;
-        }
+        
         $sql .= ' LIMIT 1';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -377,13 +422,12 @@ class InventoryRepository
 
     public function createItem(array $data): int
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $stmt = $this->db->prepare('
-            INSERT INTO inventory_items (tenant_id, name, sku, unit, category, reorder_point, avg_cost, is_pos_item, status, allow_negative, image)
-            VALUES (:tenant, :name, :sku, :unit, :category, :reorder_point, :avg_cost, :is_pos_item, :status, :allow_negative, :image)
+            INSERT INTO inventory_items (name, sku, unit, category, reorder_point, avg_cost, is_pos_item, status, allow_negative, image)
+            VALUES (:name, :sku, :unit, :category, :reorder_point, :avg_cost, :is_pos_item, :status, :allow_negative, :image)
         ');
         $stmt->execute([
-            'tenant' => $tenantId,
             'name' => $data['name'],
             'sku' => $data['sku'] ?? null,
             'unit' => $data['unit'] ?? 'unit',
@@ -396,6 +440,47 @@ class InventoryRepository
             'image' => $data['image'] ?? null,
         ]);
         return (int)$this->db->lastInsertId();
+    }
+
+    public function updateItem(int $itemId, array $data): bool
+    {
+        
+        $stmt = $this->db->prepare('
+            UPDATE inventory_items 
+            SET name = :name, 
+                sku = :sku, 
+                unit = :unit, 
+                category = :category, 
+                reorder_point = :reorder_point, 
+                avg_cost = :avg_cost,
+                is_pos_item = :is_pos_item,
+                status = :status,
+                allow_negative = :allow_negative,
+                image = :image
+            WHERE id = :id
+        ');
+        $stmt->execute([
+            'id' => $itemId,
+            'name' => $data['name'],
+            'sku' => $data['sku'] ?? null,
+            'unit' => $data['unit'] ?? 'unit',
+            'category' => $data['category'] ?? null,
+            'reorder_point' => $data['reorder_point'] ?? 0,
+            'avg_cost' => $data['avg_cost'] ?? 0,
+            'is_pos_item' => (int)($data['is_pos_item'] ?? 0),
+            'status' => $data['status'] ?? 'active',
+            'allow_negative' => (int)($data['allow_negative'] ?? 0),
+            'image' => $data['image'] ?? null,
+        ]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function deleteItem(int $itemId): bool
+    {
+        
+        $stmt = $this->db->prepare('DELETE FROM inventory_items WHERE id = :id');
+        $stmt->execute(['id' => $itemId]);
+        return $stmt->rowCount() > 0;
     }
 
     public function ensurePosComponent(int $posItemId, int $inventoryItemId, float $quantityPerSale = 1.0): void

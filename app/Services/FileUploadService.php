@@ -76,6 +76,58 @@ class FileUploadService
         return false;
     }
 
+    public function uploadDocument(array $file, string $subfolder = ''): ?string
+    {
+        if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return null;
+        }
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        $maxSize = 10485760; // 10MB for documents
+        if ($file['size'] > $maxSize) {
+            throw new \RuntimeException('File size exceeds maximum allowed size (10MB)');
+        }
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        // Allow images and PDFs
+        $allowedTypes = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+
+        if (!in_array($mimeType, $allowedTypes, true)) {
+            throw new \RuntimeException('Invalid file type. Only images, PDFs, and Word documents are allowed.');
+        }
+
+        $extension = $this->getExtensionFromMime($mimeType);
+        $filename = uniqid('doc_', true) . '.' . $extension;
+        
+        $targetDir = $this->uploadDir;
+        if ($subfolder) {
+            $targetDir .= DIRECTORY_SEPARATOR . trim($subfolder, DIRECTORY_SEPARATOR);
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0755, true);
+            }
+        }
+
+        $targetPath = $targetDir . DIRECTORY_SEPARATOR . $filename;
+
+        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+            return null;
+        }
+
+        // Return relative path from public directory
+        return 'assets/uploads' . ($subfolder ? '/' . $subfolder : '') . '/' . $filename;
+    }
+
     protected function getExtensionFromMime(string $mimeType): string
     {
         $map = [
@@ -83,9 +135,12 @@ class FileUploadService
             'image/png' => 'png',
             'image/gif' => 'gif',
             'image/webp' => 'webp',
+            'application/pdf' => 'pdf',
+            'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
         ];
 
-        return $map[$mimeType] ?? 'jpg';
+        return $map[$mimeType] ?? 'pdf';
     }
 }
 

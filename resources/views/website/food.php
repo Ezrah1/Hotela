@@ -2,11 +2,14 @@
 $website = $website ?? settings('website', []);
 $slot = function () use ($categories, $website) {
     ob_start(); ?>
-    <section class="page-hero">
+    <section class="page-hero page-hero-simple">
         <div class="container">
             <h1>Food & Drinks</h1>
             <p><?= htmlspecialchars($website['food_intro'] ?? 'Browse the menu, add to cart, and checkout.'); ?></p>
-            <form id="menuFilters" class="room-filter-panel">
+        </div>
+    </section>
+    <section class="container">
+        <form id="menuFilters" class="menu-filter-panel">
                 <div class="room-filter-grid">
                     <label>
                         <span>Search</span>

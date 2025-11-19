@@ -8,7 +8,7 @@ ob_start();
 <section class="card">
     <header class="booking-staff-header">
         <h2>Select Room to Edit</h2>
-        <a class="btn btn-outline" href="<?= base_url('dashboard/rooms'); ?>">Back to Rooms</a>
+        <a class="btn btn-outline" href="<?= base_url('staff/dashboard/rooms'); ?>">Back to Rooms</a>
     </header>
 
     <?php if (!empty($_GET['error'])): ?>
@@ -44,7 +44,7 @@ document.getElementById('room-select').addEventListener('change', function() {
     if (roomId) {
         editBtn.disabled = false;
         editBtn.onclick = function() {
-            window.location.href = '<?= base_url('dashboard/rooms/edit'); ?>?room_id=' + roomId;
+            window.location.href = '<?= base_url('staff/dashboard/rooms/edit'); ?>?room_id=' + roomId;
         };
     } else {
         editBtn.disabled = true;

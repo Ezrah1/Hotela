@@ -27,11 +27,8 @@ class PosItemRepository
             LEFT JOIN pos_items ON pos_items.category_id = pos_categories.id
             WHERE 1 = 1
         ';
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $sql .= ' AND pos_categories.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
+        
         $sql .= ' ORDER BY pos_categories.name, pos_items.name';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -64,11 +61,8 @@ class PosItemRepository
     {
         $params = ['id' => $id];
         $sql = 'SELECT * FROM pos_items WHERE id = :id';
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
+        
         $sql .= ' LIMIT 1';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -82,7 +76,7 @@ class PosItemRepository
      */
     public function unmappedItems(int $limit = 20): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
         $sql = '
             SELECT i.id, i.name, i.sku, c.name AS category
@@ -91,10 +85,7 @@ class PosItemRepository
             LEFT JOIN pos_categories c ON c.id = i.category_id
             WHERE pic.id IS NULL
         ';
-        if ($tenantId !== null) {
-            $sql .= ' AND (i.tenant_id = :tenant OR i.tenant_id IS NULL)';
-            $params['tenant'] = $tenantId;
-        }
+        
         $sql .= ' ORDER BY i.name LIMIT ' . (int)$limit;
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -103,20 +94,40 @@ class PosItemRepository
 
     public function unmappedCount(): int
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
         $sql = '
             SELECT COUNT(*) FROM pos_items i
             LEFT JOIN pos_item_components pic ON pic.pos_item_id = i.id
             WHERE pic.id IS NULL
         ';
-        if ($tenantId !== null) {
-            $sql .= ' AND (i.tenant_id = :tenant OR i.tenant_id IS NULL)';
-            $params['tenant'] = $tenantId;
-        }
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return (int)$stmt->fetchColumn();
+    }
+
+    /**
+     * Validate that item IDs exist in the database
+     */
+    public function validateItems(array $itemIds): array
+    {
+        if (empty($itemIds)) {
+            return [];
+        }
+
+        $itemIds = array_unique(array_filter(array_map('intval', $itemIds)));
+        if (empty($itemIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+        $sql = "SELECT id FROM pos_items WHERE id IN ($placeholders)";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($itemIds);
+        
+        return array_column($stmt->fetchAll(), 'id');
     }
 }
 

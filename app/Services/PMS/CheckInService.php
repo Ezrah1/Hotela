@@ -65,7 +65,9 @@ class CheckInService
 
         $folio = $this->folios->findByReservation($reservationId);
         if ($folio && (float)$folio['balance'] > 0) {
-            throw new RuntimeException('Outstanding balance must be settled before check-out');
+            // Redirect to folio payment page instead of throwing error
+            $balance = (float)$folio['balance'];
+            throw new \App\Exceptions\OutstandingBalanceException($reservationId, $balance);
         }
 
         $this->reservations->updateStatus($reservationId, [

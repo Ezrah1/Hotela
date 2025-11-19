@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Controllers\SettingsController;
 use App\Modules\Auth\Controllers\LoginController;
+use App\Modules\CashBanking\Controllers\CashBankingController;
 use App\Modules\Dashboard\Controllers\DashboardController;
 use App\Modules\Inventory\Controllers\InventoryController;
 use App\Modules\PMS\Controllers\BookingController;
@@ -64,6 +65,15 @@ return [
     ['GET', '/dashboard/pos', [POSController::class, 'index']],
     ['GET', '/dashboard/pos/dashboard', [POSController::class, 'dashboard']],
     ['POST', '/dashboard/pos/sale', [POSController::class, 'sale']],
+    // Cash Banking
+    ['GET', '/dashboard/cash-banking', [CashBankingController::class, 'index']],
+    ['POST', '/dashboard/cash-banking/close-shift', [CashBankingController::class, 'closeShift']],
+    ['GET', '/dashboard/cash-banking/unbanked-shifts', [CashBankingController::class, 'unbankedShifts']],
+    ['POST', '/dashboard/cash-banking/create-batch', [CashBankingController::class, 'createBatch']],
+    ['GET', '/dashboard/cash-banking/batch', [CashBankingController::class, 'batch']],
+    ['POST', '/dashboard/cash-banking/reconcile', [CashBankingController::class, 'reconcile']],
+    ['POST', '/dashboard/cash-banking/approve-reconciliation', [CashBankingController::class, 'approveReconciliation']],
+    ['POST', '/dashboard/cash-banking/mark-banked', [CashBankingController::class, 'markBanked']],
     ['GET', '/dashboard/orders', [\App\Modules\Orders\Controllers\OrdersController::class, 'index']],
     ['GET', '/dashboard/orders/show', [\App\Modules\Orders\Controllers\OrdersController::class, 'show']],
     // Tasks

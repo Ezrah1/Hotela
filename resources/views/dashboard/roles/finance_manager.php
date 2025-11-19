@@ -13,7 +13,7 @@
     <article class="card">
         <h3>Purchase Orders</h3>
         <p>Awaiting approval: <strong><?= (int)$dashboardData['po_pending']; ?></strong></p>
-        <a class="btn btn-outline btn-small" href="<?= base_url('dashboard/inventory/requisitions'); ?>">Review POs</a>
+        <a class="btn btn-outline btn-small" href="<?= base_url('staff/dashboard/inventory/requisitions'); ?>">Review POs</a>
     </article>
     <?php endif; ?>
     <?php if (!empty($dashboardData['recent_movements'])): ?>

@@ -23,7 +23,7 @@ ob_start();
         </div>
     </header>
 
-    <form method="get" action="<?= base_url('dashboard/reports/finance'); ?>" class="finance-filters">
+    <form method="get" action="<?= base_url('staff/dashboard/reports/finance'); ?>" class="finance-filters">
         <div class="filter-grid">
             <label>
                 <span>Start Date</span>
@@ -35,8 +35,8 @@ ob_start();
             </label>
             <div class="filter-actions">
                 <button class="btn btn-primary" type="submit">Apply Filters</button>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/reports/finance?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/reports/finance?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/reports/finance?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/reports/finance?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
             </div>
         </div>
     </form>

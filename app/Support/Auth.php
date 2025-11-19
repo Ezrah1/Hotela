@@ -27,11 +27,7 @@ class Auth
             throw new RuntimeException('User not found');
         }
 
-        if (!empty($user['tenant_id'])) {
-            $tenant = \App\Support\Tenant::resolveById((int)$user['tenant_id']);
-            \App\Support\Tenant::set($tenant);
-        }
-
+        // Single installation - no tenant logic needed
         $role = $_SESSION['role_override'] ?? $user['role_key'];
         $user['role'] = $role;
         $user['permissions'] = self::permissionsFor($role);
@@ -85,13 +81,38 @@ class Auth
     {
         if (!self::check()) {
             $redirect = urlencode($_SERVER['REQUEST_URI'] ?? '/');
-            header('Location: ' . base_url('login?redirect=' . $redirect));
+            header('Location: ' . base_url('staff/login?redirect=' . $redirect));
             exit;
+        }
+
+        // Check attendance status for non-exempt roles
+        $user = self::user();
+        $role = $user['role_key'] ?? '';
+        $exemptRoles = ['admin', 'director', 'tech_admin'];
+        
+        if (!in_array($role, $exemptRoles, true)) {
+            $attendanceRepo = new \App\Repositories\AttendanceRepository();
+            $overrideRepo = new \App\Repositories\LoginOverrideRepository();
+            
+            // Check if user has been checked out today
+            $isCheckedOut = $attendanceRepo->isCheckedOut($user['id']);
+            
+            if ($isCheckedOut) {
+                // Check for active override
+                $override = $overrideRepo->getActiveOverride($user['id']);
+                
+                if (!$override) {
+                    // User has been checked out and no override - log them out
+                    self::logout();
+                    header('Location: ' . base_url('staff/login?error=' . urlencode('You have been logged out because you have ended your shift. Please contact an administrator for access.')));
+                    exit;
+                }
+            }
         }
 
         if ($roles && !in_array(self::role(), $roles, true)) {
             // Show error message with redirect
-            show_message('error', 'Access Forbidden', 'You do not have permission to access this page.', base_url('dashboard'), 5);
+            show_message('error', 'Access Forbidden', 'You do not have permission to access this page.', base_url('staff/dashboard'), 5);
             exit;
         }
     }

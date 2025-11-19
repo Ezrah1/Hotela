@@ -67,3 +67,7 @@ Desktop.ini
 dist/
 build/
 
+# Cloudflare Tunnel credentials (sensitive)
+Cloudflare/credentials.json
+Cloudflare/*.pem
+

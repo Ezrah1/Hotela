@@ -14,7 +14,7 @@ ob_start();
             <h2>Suppliers Management</h2>
             <p class="suppliers-subtitle">Manage your supplier accounts and vendor relationships</p>
         </div>
-        <a href="<?= base_url('dashboard/suppliers/create'); ?>" class="btn btn-primary">
+        <a href="<?= base_url('staff/dashboard/suppliers/create'); ?>" class="btn btn-primary">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -44,7 +44,7 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <form method="get" action="<?= base_url('dashboard/suppliers'); ?>" class="suppliers-search">
+    <form method="get" action="<?= base_url('staff/dashboard/suppliers'); ?>" class="suppliers-search">
         <div class="search-wrapper">
             <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"></circle>
@@ -58,7 +58,7 @@ ob_start();
                 class="search-input"
             >
             <?php if ($search): ?>
-                <a href="<?= base_url('dashboard/suppliers'); ?>" class="search-clear">
+                <a href="<?= base_url('staff/dashboard/suppliers'); ?>" class="search-clear">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -80,7 +80,7 @@ ob_start();
             <h3>No Suppliers Found</h3>
             <p><?= $search ? 'No suppliers match your search criteria.' : 'Get started by adding your first supplier.'; ?></p>
             <?php if (!$search): ?>
-                <a href="<?= base_url('dashboard/suppliers/create'); ?>" class="btn btn-primary">Add Supplier</a>
+                <a href="<?= base_url('staff/dashboard/suppliers/create'); ?>" class="btn btn-primary">Add Supplier</a>
             <?php endif; ?>
         </div>
     <?php else: ?>
@@ -95,13 +95,13 @@ ob_start();
                             </span>
                         </div>
                         <div class="supplier-actions">
-                            <a href="<?= base_url('dashboard/suppliers/show?id=' . $supplier['id']); ?>" class="btn-icon" title="View Details">
+                            <a href="<?= base_url('staff/dashboard/suppliers/show?id=' . $supplier['id']); ?>" class="btn-icon" title="View Details">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                     <circle cx="12" cy="12" r="3"></circle>
                                 </svg>
                             </a>
-                            <a href="<?= base_url('dashboard/suppliers/edit?id=' . $supplier['id']); ?>" class="btn-icon" title="Edit">
+                            <a href="<?= base_url('staff/dashboard/suppliers/edit?id=' . $supplier['id']); ?>" class="btn-icon" title="Edit">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>

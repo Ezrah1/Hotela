@@ -8,7 +8,7 @@ ob_start();
 <section class="card">
     <header class="page-header">
         <div>
-            <a href="<?= base_url('dashboard/suppliers'); ?>" class="back-link">
+            <a href="<?= base_url('staff/dashboard/suppliers'); ?>" class="back-link">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -30,7 +30,7 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('dashboard/suppliers/edit?id=' . $supplier['id']); ?>" class="supplier-form">
+    <form method="post" action="<?= base_url('staff/dashboard/suppliers/edit?id=' . $supplier['id']); ?>" class="supplier-form">
         <input type="hidden" name="id" value="<?= $supplier['id']; ?>">
         
         <div class="form-section">
@@ -140,7 +140,7 @@ ob_start();
         </div>
 
         <div class="form-actions">
-            <a href="<?= base_url('dashboard/suppliers'); ?>" class="btn btn-outline">Cancel</a>
+            <a href="<?= base_url('staff/dashboard/suppliers'); ?>" class="btn btn-outline">Cancel</a>
             <button type="submit" class="btn btn-primary">Update Supplier</button>
         </div>
     </form>

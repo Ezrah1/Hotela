@@ -11,7 +11,7 @@ ob_start();
     </header>
 
     <div class="staff-filters">
-        <form method="get" action="<?= base_url('dashboard/staff'); ?>" class="filter-form">
+        <form method="get" action="<?= base_url('staff/dashboard/staff'); ?>" class="filter-form">
             <div class="filter-inputs">
                 <label>
                     <span>Role</span>
@@ -38,7 +38,7 @@ ob_start();
                 </label>
                 <button class="btn btn-outline" type="submit">Apply Filters</button>
                 <?php if ($activeRole || $activeStatus || $search): ?>
-                    <a href="<?= base_url('dashboard/staff'); ?>" class="btn btn-ghost">Clear</a>
+                    <a href="<?= base_url('staff/dashboard/staff'); ?>" class="btn btn-ghost">Clear</a>
                 <?php endif; ?>
             </div>
         </form>
@@ -125,7 +125,7 @@ ob_start();
                         if (in_array($userRole, ['admin'])):
                         ?>
                             <td>
-                                <a href="<?= base_url('dashboard/staff/edit?id=' . (int)$user['id']); ?>" class="task-action-link">
+                                <a href="<?= base_url('staff/dashboard/staff/edit?id=' . (int)$user['id']); ?>" class="task-action-link">
                                     Edit
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>

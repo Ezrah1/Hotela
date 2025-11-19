@@ -19,7 +19,7 @@ ob_start();
 		</div>
 	</header>
 
-	<form method="get" action="<?= base_url('dashboard/reports/sales'); ?>" class="filters-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;margin-bottom:1.25rem;">
+	<form method="get" action="<?= base_url('staff/dashboard/reports/sales'); ?>" class="filters-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;margin-bottom:1.25rem;">
 		<label>
 			<span>Start date</span>
 			<input type="date" name="start" value="<?= htmlspecialchars($filters['start']); ?>">
@@ -30,8 +30,8 @@ ob_start();
 		</label>
 		<div style="display:flex;gap:0.5rem;align-items:flex-end;">
 			<button class="btn btn-outline" type="submit">Apply</button>
-			<a class="btn btn-outline" href="<?= base_url('dashboard/reports/sales?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
-			<a class="btn btn-outline" href="<?= base_url('dashboard/reports/sales?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 days</a>
+			<a class="btn btn-outline" href="<?= base_url('staff/dashboard/reports/sales?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
+			<a class="btn btn-outline" href="<?= base_url('staff/dashboard/reports/sales?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 days</a>
 		</div>
 	</form>
 

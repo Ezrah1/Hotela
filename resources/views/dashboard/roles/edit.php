@@ -8,7 +8,7 @@ ob_start();
             <h2>Edit Role: <?= htmlspecialchars($role['label'] ?? $roleKey); ?></h2>
             <p class="role-edit-subtitle">Manage permissions for this role</p>
         </div>
-        <a class="btn btn-ghost" href="<?= base_url('dashboard/roles'); ?>">
+        <a class="btn btn-ghost" href="<?= base_url('staff/dashboard/roles'); ?>">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -20,7 +20,7 @@ ob_start();
         <div class="alert danger"><?= htmlspecialchars($_GET['error']); ?></div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('dashboard/roles/update'); ?>" class="role-edit-form">
+    <form method="post" action="<?= base_url('staff/dashboard/roles/update'); ?>" class="role-edit-form">
         <input type="hidden" name="role_key" value="<?= htmlspecialchars($roleKey); ?>">
 
         <div class="form-section">
@@ -85,7 +85,7 @@ ob_start();
                 </svg>
                 Update Permissions
             </button>
-            <a class="btn btn-outline" href="<?= base_url('dashboard/roles'); ?>">Cancel</a>
+            <a class="btn btn-outline" href="<?= base_url('staff/dashboard/roles'); ?>">Cancel</a>
         </div>
     </form>
 </section>

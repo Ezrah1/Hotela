@@ -23,7 +23,7 @@ ob_start();
         </div>
         <div class="header-actions">
             <?php if ($unreadCount > 0): ?>
-                <a href="<?= base_url('dashboard/notifications/mark-all-read'); ?>" class="btn btn-outline">
+                <a href="<?= base_url('staff/dashboard/notifications/mark-all-read'); ?>" class="btn btn-outline">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
@@ -54,7 +54,7 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <form method="get" action="<?= base_url('dashboard/notifications'); ?>" class="notifications-filters">
+    <form method="get" action="<?= base_url('staff/dashboard/notifications'); ?>" class="notifications-filters">
         <div class="filter-grid">
             <label>
                 <span>Status</span>
@@ -74,7 +74,7 @@ ob_start();
             </label>
             <div class="filter-actions">
                 <button class="btn btn-primary" type="submit">Apply Filters</button>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/notifications'); ?>">Reset</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/notifications'); ?>">Reset</a>
             </div>
         </div>
     </form>
@@ -100,13 +100,13 @@ ob_start();
                                 <h4 class="notification-title"><?= htmlspecialchars($notification['title']); ?></h4>
                                 <div class="notification-actions">
                                     <?php if ($notification['status'] === 'unread'): ?>
-                                        <a href="<?= base_url('dashboard/notifications/mark-read?id=' . $notification['id']); ?>" class="btn-icon" title="Mark as read">
+                                        <a href="<?= base_url('staff/dashboard/notifications/mark-read?id=' . $notification['id']); ?>" class="btn-icon" title="Mark as read">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <polyline points="20 6 9 17 4 12"></polyline>
                                             </svg>
                                         </a>
                                     <?php endif; ?>
-                                    <a href="<?= base_url('dashboard/notifications/delete?id=' . $notification['id']); ?>" class="btn-icon btn-icon-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this notification?');">
+                                    <a href="<?= base_url('staff/dashboard/notifications/delete?id=' . $notification['id']); ?>" class="btn-icon btn-icon-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this notification?');">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <polyline points="3 6 5 6 21 6"></polyline>
                                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>

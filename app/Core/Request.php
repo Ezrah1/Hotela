@@ -13,6 +13,20 @@ class Request
         $this->query = $_GET ?? [];
         $this->body = $_POST ?? [];
         $this->server = $_SERVER ?? [];
+        
+        // Handle JSON request body
+        if ($this->method() === 'POST' || $this->method() === 'PUT' || $this->method() === 'PATCH') {
+            $contentType = $this->server['CONTENT_TYPE'] ?? '';
+            if (str_contains($contentType, 'application/json')) {
+                $jsonInput = file_get_contents('php://input');
+                if ($jsonInput) {
+                    $jsonData = json_decode($jsonInput, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
+                        $this->body = array_merge($this->body, $jsonData);
+                    }
+                }
+            }
+        }
     }
 
     public function method(): string

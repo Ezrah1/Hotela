@@ -15,15 +15,8 @@ class ReservationRepository
 
     protected function tenantCondition(string $alias, array &$params): string
     {
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId === null) {
-            return '';
-        }
-
-        $param = $alias . '_tenant_id';
-        $params[$param] = $tenantId;
-
-        return " AND {$alias}.tenant_id = :{$param}";
+        // Single installation - no tenant filtering needed
+        return '';
     }
 
     public function upcoming(int $limit = 10): array
@@ -76,18 +69,23 @@ class ReservationRepository
         $params['payment_status'] = $data['payment_status'] ?? 'unpaid';
         $params['check_in_status'] = $data['check_in_status'] ?? 'scheduled';
         $params['room_status'] = $data['room_status'] ?? 'pending';
-        $tenantId = \App\Support\Tenant::id();
-        $params['tenant_id'] = $tenantId;
+        $params['payment_method'] = $data['payment_method'] ?? null;
+        $params['mpesa_phone'] = $data['mpesa_phone'] ?? null;
+        $params['mpesa_checkout_request_id'] = $data['mpesa_checkout_request_id'] ?? null;
+        $params['mpesa_merchant_request_id'] = $data['mpesa_merchant_request_id'] ?? null;
+        $params['mpesa_status'] = $data['mpesa_status'] ?? null;
 
         $stmt = $this->db->prepare('
             INSERT INTO reservations (
-                tenant_id, reference, guest_name, guest_email, guest_phone, check_in, check_out,
+                reference, guest_name, guest_email, guest_phone, check_in, check_out,
                 adults, children, room_type_id, room_id, extras, source, status,
-                total_amount, deposit_amount, payment_status, check_in_status, room_status
+                total_amount, deposit_amount, payment_status, check_in_status, room_status,
+                payment_method, mpesa_phone, mpesa_checkout_request_id, mpesa_merchant_request_id, mpesa_status
             ) VALUES (
-                :tenant_id, :reference, :guest_name, :guest_email, :guest_phone, :check_in, :check_out,
+                :reference, :guest_name, :guest_email, :guest_phone, :check_in, :check_out,
                 :adults, :children, :room_type_id, :room_id, :extras, :source, :status,
-                :total_amount, :deposit_amount, :payment_status, :check_in_status, :room_status
+                :total_amount, :deposit_amount, :payment_status, :check_in_status, :room_status,
+                :payment_method, :mpesa_phone, :mpesa_checkout_request_id, :mpesa_merchant_request_id, :mpesa_status
             )
         ');
 

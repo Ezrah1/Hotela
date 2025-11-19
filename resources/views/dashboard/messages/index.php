@@ -27,7 +27,7 @@ ob_start();
             </p>
         </div>
         <div class="header-actions">
-            <a href="<?= base_url('dashboard/messages/compose'); ?>" class="btn btn-primary">
+            <a href="<?= base_url('staff/dashboard/messages/compose'); ?>" class="btn btn-primary">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     <line x1="9" y1="10" x2="15" y2="10"></line>
@@ -59,7 +59,7 @@ ob_start();
     <?php endif; ?>
 
     <div class="messages-tabs">
-        <a href="<?= base_url('dashboard/messages?folder=inbox'); ?>" class="tab <?= $folder === 'inbox' ? 'active' : ''; ?>">
+        <a href="<?= base_url('staff/dashboard/messages?folder=inbox'); ?>" class="tab <?= $folder === 'inbox' ? 'active' : ''; ?>">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                 <polyline points="22,6 12,13 2,6"></polyline>
@@ -69,7 +69,7 @@ ob_start();
                 <span class="badge"><?= $unreadCount; ?></span>
             <?php endif; ?>
         </a>
-        <a href="<?= base_url('dashboard/messages?folder=sent'); ?>" class="tab <?= $folder === 'sent' ? 'active' : ''; ?>">
+        <a href="<?= base_url('staff/dashboard/messages?folder=sent'); ?>" class="tab <?= $folder === 'sent' ? 'active' : ''; ?>">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -91,7 +91,7 @@ ob_start();
         <?php else: ?>
             <div class="messages-list">
                 <?php foreach ($messages as $message): ?>
-                    <a href="<?= base_url('dashboard/messages/view?id=' . $message['id']); ?>" class="message-item <?= $message['status'] === 'sent' ? 'unread' : ''; ?> <?= $message['is_important'] ? 'important' : ''; ?>">
+                    <a href="<?= base_url('staff/dashboard/messages/view?id=' . $message['id']); ?>" class="message-item <?= $message['status'] === 'sent' ? 'unread' : ''; ?> <?= $message['is_important'] ? 'important' : ''; ?>">
                         <div class="message-indicator"></div>
                         <div class="message-content">
                             <div class="message-header">

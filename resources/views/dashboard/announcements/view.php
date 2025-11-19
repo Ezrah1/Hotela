@@ -3,7 +3,7 @@ $pageTitle = 'View Announcement | Hotela';
 $announcement = $announcement ?? null;
 
 if (!$announcement) {
-    header('Location: ' . base_url('dashboard/announcements?error=' . urlencode('Announcement not found')));
+    header('Location: ' . base_url('staff/dashboard/announcements?error=' . urlencode('Announcement not found')));
     exit;
 }
 
@@ -14,7 +14,7 @@ ob_start();
 ?>
 <section class="card">
     <header class="announcement-view-header">
-        <a href="<?= base_url('dashboard/announcements'); ?>" class="btn btn-outline">
+        <a href="<?= base_url('staff/dashboard/announcements'); ?>" class="btn btn-outline">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
@@ -23,10 +23,10 @@ ob_start();
         </a>
         <?php if ($canEdit): ?>
             <div class="header-actions">
-                <a href="<?= base_url('dashboard/announcements/edit?id=' . $announcement['id']); ?>" class="btn btn-outline">
+                <a href="<?= base_url('staff/dashboard/announcements/edit?id=' . $announcement['id']); ?>" class="btn btn-outline">
                     Edit
                 </a>
-                <a href="<?= base_url('dashboard/announcements/delete?id=' . $announcement['id']); ?>" class="btn btn-outline btn-danger" onclick="return confirm('Are you sure you want to delete this announcement?');">
+                <a href="<?= base_url('staff/dashboard/announcements/delete?id=' . $announcement['id']); ?>" class="btn btn-outline btn-danger" onclick="return confirm('Are you sure you want to delete this announcement?');">
                     Delete
                 </a>
             </div>

@@ -15,20 +15,19 @@ class MessageRepository
 
     public function create(array $data): int
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         
         $stmt = $this->db->prepare('
             INSERT INTO messages (
-                tenant_id, sender_id, recipient_id, recipient_role,
+                sender_id, recipient_id, recipient_role,
                 subject, message, status, is_important
             ) VALUES (
-                :tenant_id, :sender_id, :recipient_id, :recipient_role,
+                :sender_id, :recipient_id, :recipient_role,
                 :subject, :message, :status, :is_important
             )
         ');
 
         $stmt->execute([
-            'tenant_id' => $tenantId,
             'sender_id' => $data['sender_id'],
             'recipient_id' => $data['recipient_id'] ?? null,
             'recipient_role' => $data['recipient_role'] ?? null,
@@ -43,7 +42,7 @@ class MessageRepository
 
     public function find(int $id): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $id];
 
         $sql = '
@@ -59,10 +58,7 @@ class MessageRepository
             WHERE m.id = :id
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (m.tenant_id IS NULL OR m.tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' LIMIT 1';
 
@@ -74,7 +70,7 @@ class MessageRepository
 
     public function getInbox(int $userId, ?string $status = null, int $limit = 50): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['user_id' => $userId];
 
         $sql = '
@@ -87,10 +83,7 @@ class MessageRepository
             WHERE (m.recipient_id = :user_id OR (m.recipient_role IS NOT NULL AND m.recipient_id IS NULL))
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (m.tenant_id IS NULL OR m.tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($status) {
             $sql .= ' AND m.status = :status';
@@ -113,7 +106,7 @@ class MessageRepository
 
     public function getSent(int $userId, int $limit = 50): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['user_id' => $userId, 'limit' => $limit];
 
         $sql = '
@@ -126,10 +119,7 @@ class MessageRepository
             WHERE m.sender_id = :user_id AND m.status != \'deleted\'
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (m.tenant_id IS NULL OR m.tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' ORDER BY m.created_at DESC LIMIT :limit';
 
@@ -144,7 +134,7 @@ class MessageRepository
 
     public function markAsRead(int $id, int $userId): bool
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'id' => $id,
             'user_id' => $userId,
@@ -153,10 +143,7 @@ class MessageRepository
 
         $sql = 'UPDATE messages SET status = \'read\', read_at = :read_at WHERE id = :id AND recipient_id = :user_id';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (tenant_id IS NULL OR tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -166,7 +153,7 @@ class MessageRepository
 
     public function delete(int $id, int $userId): bool
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'id' => $id,
             'user_id' => $userId,
@@ -175,10 +162,7 @@ class MessageRepository
 
         $sql = 'UPDATE messages SET status = \'deleted\', deleted_at = :deleted_at WHERE id = :id AND (sender_id = :user_id OR recipient_id = :user_id)';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (tenant_id IS NULL OR tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -188,7 +172,7 @@ class MessageRepository
 
     public function getUnreadCount(int $userId, ?string $roleKey = null): int
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['user_id' => $userId];
 
         $sql = 'SELECT COUNT(*) FROM messages WHERE status = \'sent\' AND (recipient_id = :user_id';
@@ -200,10 +184,7 @@ class MessageRepository
 
         $sql .= ')';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (tenant_id IS NULL OR tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

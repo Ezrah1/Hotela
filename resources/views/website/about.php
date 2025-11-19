@@ -30,34 +30,41 @@ $slot = function () use ($website) {
     }, $amenities))), 0, 4);
 
     ob_start(); ?>
-    <section class="page-hero">
+    <section class="page-hero page-hero-simple">
         <div class="container">
             <h1>About <?= htmlspecialchars(settings('branding.name', 'Hotela')); ?></h1>
             <p><?= htmlspecialchars($website['hero_tagline'] ?? 'Kenyan hospitality, reimagined.'); ?></p>
         </div>
     </section>
-    <section class="container about-grid">
-        <article>
-            <h3>Our Story</h3>
-            <p><?= nl2br(htmlspecialchars($website['about_content'] ?? 'Hotela combines modern comfort with timeless service.')); ?></p>
-        </article>
-        <article>
-            <h3>Highlights</h3>
-            <ul>
-                <?php if ($highlights): ?>
-                    <?php foreach ($highlights as $item): ?>
+    <section class="container about-section">
+        <div class="about-grid">
+            <article class="about-content">
+                <h2>Our Story</h2>
+                <div class="about-text">
+                    <?= nl2br(htmlspecialchars($website['about_content'] ?? 'Hotela combines modern comfort with timeless service.')); ?>
+                </div>
+            </article>
+            <article class="about-highlights">
+                <h2>Highlights</h2>
+                <ul class="highlights-list">
+                    <?php if ($highlights): ?>
+                        <?php foreach ($highlights as $item): ?>
+                            <li>
+                                <strong><?= htmlspecialchars($item['title']); ?></strong>
+                                <?php if (!empty($item['description'])): ?>
+                                    <span><?= htmlspecialchars($item['description']); ?></span>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
                         <li>
-                            <strong><?= htmlspecialchars($item['title']); ?></strong>
-                            <?php if (!empty($item['description'])): ?>
-                                <span><?= htmlspecialchars($item['description']); ?></span>
-                            <?php endif; ?>
+                            <strong>Comfort-first rooms</strong>
+                            <span>Thoughtful dining experiences</span>
                         </li>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <li>Comfort-first rooms and thoughtful dining experiences</li>
-                <?php endif; ?>
-            </ul>
-        </article>
+                    <?php endif; ?>
+                </ul>
+            </article>
+        </div>
     </section>
     <?php
     return ob_get_clean();

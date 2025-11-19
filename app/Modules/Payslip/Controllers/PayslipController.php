@@ -81,7 +81,6 @@ class PayslipController extends Controller
 
     protected function getPayslips(int $userId): array
     {
-        $tenantId = \App\Support\Tenant::id();
         $params = ['user_id' => $userId];
 
         $sql = "
@@ -89,14 +88,8 @@ class PayslipController extends Controller
             FROM payroll
             INNER JOIN users ON users.id = payroll.user_id
             WHERE payroll.user_id = :user_id
+            ORDER BY payroll.pay_period_end DESC LIMIT 12
         ";
-
-        if ($tenantId !== null) {
-            $sql .= ' AND payroll.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
-
-        $sql .= ' ORDER BY payroll.pay_period_end DESC LIMIT 12';
 
         $stmt = db()->prepare($sql);
         $stmt->execute($params);
@@ -106,7 +99,6 @@ class PayslipController extends Controller
 
     protected function getPayslip(int $payslipId, int $userId): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
         $params = [
             'id' => $payslipId,
             'user_id' => $userId,
@@ -117,14 +109,8 @@ class PayslipController extends Controller
             FROM payroll
             INNER JOIN users ON users.id = payroll.user_id
             WHERE payroll.id = :id AND payroll.user_id = :user_id
+            LIMIT 1
         ";
-
-        if ($tenantId !== null) {
-            $sql .= ' AND payroll.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
-
-        $sql .= ' LIMIT 1';
 
         $stmt = db()->prepare($sql);
         $stmt->execute($params);

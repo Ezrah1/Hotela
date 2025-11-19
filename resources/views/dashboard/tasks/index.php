@@ -11,7 +11,7 @@ ob_start();
             <h2>Task Manager</h2>
             <p class="tasks-subtitle">Create, assign, and track tasks across departments</p>
         </div>
-        <a class="btn btn-primary" href="<?= base_url('dashboard/tasks/create'); ?>">
+        <a class="btn btn-primary" href="<?= base_url('staff/dashboard/tasks/create'); ?>">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -21,7 +21,7 @@ ob_start();
     </header>
 
     <div class="tasks-filters">
-        <form method="get" action="<?= base_url('dashboard/tasks'); ?>" class="filter-form">
+        <form method="get" action="<?= base_url('staff/dashboard/tasks'); ?>" class="filter-form">
             <div class="filter-inputs">
                 <label>
                     <span>View</span>
@@ -46,7 +46,7 @@ ob_start();
                 </label>
                 <button class="btn btn-outline" type="submit">Apply Filters</button>
                 <?php if (($filters['view'] ?? '') !== 'my' || ($filters['status'] ?? '') !== 'open' || !empty($filters['q'] ?? '')): ?>
-                    <a href="<?= base_url('dashboard/tasks'); ?>" class="btn btn-ghost">Clear</a>
+                    <a href="<?= base_url('staff/dashboard/tasks'); ?>" class="btn btn-ghost">Clear</a>
                 <?php endif; ?>
             </div>
         </form>
@@ -60,7 +60,7 @@ ob_start();
             </svg>
             <h3>No tasks found</h3>
             <p>No tasks match your current filters. Create your first task to get started.</p>
-            <a href="<?= base_url('dashboard/tasks/create'); ?>" class="btn btn-primary" style="margin-top: 1rem;">Create Task</a>
+            <a href="<?= base_url('staff/dashboard/tasks/create'); ?>" class="btn btn-primary" style="margin-top: 1rem;">Create Task</a>
         </div>
     <?php else: ?>
         <div class="tasks-table-wrapper">
@@ -142,7 +142,7 @@ ob_start();
                             <?php endif; ?>
                         </td>
                         <td>
-                            <a href="<?= base_url('dashboard/tasks/view?id=' . (int)($task['id'] ?? 0)); ?>" class="task-action-link">
+                            <a href="<?= base_url('staff/dashboard/tasks/view?id=' . (int)($task['id'] ?? 0)); ?>" class="task-action-link">
                                 View
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polyline points="9 18 15 12 9 6"></polyline>

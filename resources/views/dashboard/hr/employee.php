@@ -11,7 +11,7 @@ ob_start();
             <h2><?= htmlspecialchars($user['name']); ?></h2>
             <p class="employee-subtitle"><?= htmlspecialchars($user['email']); ?> • <?= htmlspecialchars($user['role_name'] ?? $user['role_key']); ?></p>
         </div>
-        <a class="btn btn-ghost" href="<?= base_url('dashboard/hr'); ?>">
+        <a class="btn btn-ghost" href="<?= base_url('staff/dashboard/hr'); ?>">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -44,7 +44,7 @@ ob_start();
             </button>
         </div>
 
-        <form id="add-record-form" method="post" action="<?= base_url('dashboard/hr/employee/record'); ?>" style="display: none; margin-bottom: 1.5rem; padding: 1.5rem; background: #f8fafc; border-radius: 0.75rem; border: 1px solid #e2e8f0;">
+        <form id="add-record-form" method="post" action="<?= base_url('staff/dashboard/hr/employee/record'); ?>" style="display: none; margin-bottom: 1.5rem; padding: 1.5rem; background: #f8fafc; border-radius: 0.75rem; border: 1px solid #e2e8f0;">
             <input type="hidden" name="user_id" value="<?= (int)$user['id']; ?>">
             <div class="form-grid">
                 <label>

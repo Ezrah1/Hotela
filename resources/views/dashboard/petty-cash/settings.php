@@ -10,7 +10,7 @@ ob_start();
 <section class="card">
     <header class="page-header">
         <div>
-            <a href="<?= base_url('dashboard/petty-cash'); ?>" class="back-link">
+            <a href="<?= base_url('staff/dashboard/petty-cash'); ?>" class="back-link">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -42,7 +42,7 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('dashboard/petty-cash/settings'); ?>" class="settings-form">
+    <form method="post" action="<?= base_url('staff/dashboard/petty-cash/settings'); ?>" class="settings-form">
         <div class="form-section">
             <h3 class="section-title">Account Information</h3>
             <div class="form-grid">
@@ -79,7 +79,7 @@ ob_start();
         </div>
 
         <div class="form-actions">
-            <a href="<?= base_url('dashboard/petty-cash'); ?>" class="btn btn-outline">Cancel</a>
+            <a href="<?= base_url('staff/dashboard/petty-cash'); ?>" class="btn btn-outline">Cancel</a>
             <button type="submit" class="btn btn-primary">Save Settings</button>
         </div>
     </form>

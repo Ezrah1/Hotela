@@ -14,14 +14,14 @@ ob_start();
 <section class="card">
     <header class="booking-staff-header">
         <h2>Edit Room: <?= htmlspecialchars($room['room_number']); ?></h2>
-        <a class="btn btn-outline" href="<?= base_url('dashboard/rooms'); ?>">Back to Rooms</a>
+        <a class="btn btn-outline" href="<?= base_url('staff/dashboard/rooms'); ?>">Back to Rooms</a>
     </header>
 
     <?php if (!empty($_GET['error'])): ?>
         <div class="alert danger"><?= htmlspecialchars($_GET['error']); ?></div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('dashboard/rooms/update'); ?>" enctype="multipart/form-data" style="margin-top: 1.5rem;">
+    <form method="post" action="<?= base_url('staff/dashboard/rooms/update'); ?>" enctype="multipart/form-data" style="margin-top: 1.5rem;">
         <input type="hidden" name="room_id" value="<?= (int)$room['id']; ?>">
 
         <div class="form-grid">
@@ -100,7 +100,7 @@ ob_start();
 
         <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
             <button class="btn btn-primary" type="submit">Update Room</button>
-            <a class="btn btn-outline" href="<?= base_url('dashboard/rooms'); ?>">Cancel</a>
+            <a class="btn btn-outline" href="<?= base_url('staff/dashboard/rooms'); ?>">Cancel</a>
         </div>
     </form>
 </section>

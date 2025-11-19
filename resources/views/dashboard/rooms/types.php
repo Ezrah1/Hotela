@@ -8,11 +8,11 @@ ob_start();
     <header class="booking-staff-header">
         <h2>Room Types</h2>
         <div class="booking-header-actions">
-            <form method="post" action="<?= base_url('dashboard/rooms/replace-types'); ?>" style="display: inline;" onsubmit="return confirm('This will replace all current room types with Standard, Deluxe, and Lux. All rooms and reservations will be updated. Continue?');">
+            <form method="post" action="<?= base_url('staff/dashboard/rooms/replace-types'); ?>" style="display: inline;" onsubmit="return confirm('This will replace all current room types with Standard, Deluxe, and Lux. All rooms and reservations will be updated. Continue?');">
                 <button class="btn btn-outline" type="submit">Replace with Standard Types</button>
             </form>
-            <a class="btn btn-outline" href="<?= base_url('dashboard/rooms/create-type'); ?>">Create New Type</a>
-            <a class="btn btn-outline" href="<?= base_url('dashboard/rooms'); ?>">Back to Rooms</a>
+            <a class="btn btn-outline" href="<?= base_url('staff/dashboard/rooms/create-type'); ?>">Create New Type</a>
+            <a class="btn btn-outline" href="<?= base_url('staff/dashboard/rooms'); ?>">Back to Rooms</a>
         </div>
     </header>
 
@@ -52,8 +52,8 @@ ob_start();
                 <td><?= (int)($roomType['max_guests'] ?? 2); ?></td>
                 <td>KES <?= number_format((float)($roomType['base_rate'] ?? 0), 2); ?></td>
                 <td>
-                    <a class="btn btn-outline btn-small" href="<?= base_url('dashboard/rooms/edit-type?room_type_id=' . (int)$roomType['id']); ?>">Edit</a>
-                    <form method="post" action="<?= base_url('dashboard/rooms/delete-type'); ?>" style="display: inline; margin-left: 0.5rem;" onsubmit="return confirm('Are you sure you want to delete this room type? This can only be done if no rooms or reservations are using it.');">
+                    <a class="btn btn-outline btn-small" href="<?= base_url('staff/dashboard/rooms/edit-type?room_type_id=' . (int)$roomType['id']); ?>">Edit</a>
+                    <form method="post" action="<?= base_url('staff/dashboard/rooms/delete-type'); ?>" style="display: inline; margin-left: 0.5rem;" onsubmit="return confirm('Are you sure you want to delete this room type? This can only be done if no rooms or reservations are using it.');">
                         <input type="hidden" name="room_type_id" value="<?= (int)$roomType['id']; ?>">
                         <button class="btn btn-outline btn-small" type="submit" style="color: #ef4444; border-color: #ef4444;">Delete</button>
                     </form>

@@ -17,11 +17,8 @@ class RoomTypeRepository
     {
         $params = [];
         $sql = 'SELECT * FROM room_types WHERE 1 = 1';
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
+        
         $sql .= ' ORDER BY name';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -32,11 +29,8 @@ class RoomTypeRepository
     {
         $params = ['id' => $id];
         $sql = 'SELECT * FROM room_types WHERE id = :id';
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
+        
         $sql .= ' LIMIT 1';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -66,27 +60,23 @@ class RoomTypeRepository
         }
 
         $sql = 'UPDATE room_types SET ' . implode(', ', $sets) . ' WHERE id = :id';
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
     }
 
     public function create(array $data): int
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $amenities = $data['amenities'] ?? [];
         if (is_array($amenities)) {
             $amenities = json_encode($amenities);
         }
 
-        $sql = 'INSERT INTO room_types (tenant_id, name, description, max_guests, base_rate, amenities, image)
-            VALUES (:tenant_id, :name, :description, :max_guests, :base_rate, :amenities, :image)';
+        $sql = 'INSERT INTO room_types (name, description, max_guests, base_rate, amenities, image)
+            VALUES (:name, :description, :max_guests, :base_rate, :amenities, :image)';
         $params = [
-            'tenant_id' => $tenantId,
             'name' => trim($data['name']),
             'description' => $data['description'] ?? null,
             'max_guests' => (int)($data['max_guests'] ?? 2),
@@ -110,16 +100,8 @@ class RoomTypeRepository
                 (SELECT COUNT(*) FROM rooms WHERE room_type_id = :id) as rooms_count,
                 (SELECT COUNT(*) FROM reservations WHERE room_type_id = :id) as reservations_count
         ';
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            // Add tenant conditions to the subqueries
-            $sql = '
-                SELECT 
-                    (SELECT COUNT(*) FROM rooms WHERE room_type_id = :id AND tenant_id = :tenant_id) as rooms_count,
-                    (SELECT COUNT(*) FROM reservations WHERE room_type_id = :id AND tenant_id = :tenant_id) as reservations_count
-            ';
-            $params['tenant_id'] = $tenantId;
-        }
+        
+        
         
         $checkStmt = $this->db->prepare($sql);
         $checkStmt->execute($params);
@@ -131,10 +113,7 @@ class RoomTypeRepository
 
         $params = ['id' => $id];
         $sql = 'DELETE FROM room_types WHERE id = :id';
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -147,16 +126,13 @@ class RoomTypeRepository
         // mapping: ['old_type_id' => 'new_type_id']
         $this->db->beginTransaction();
         try {
-            $tenantId = \App\Support\Tenant::id();
+            
             
             // Update all rooms
             foreach ($mapping as $oldId => $newId) {
                 $params = ['new_id' => $newId, 'old_id' => $oldId];
                 $sql = 'UPDATE rooms SET room_type_id = :new_id WHERE room_type_id = :old_id';
-                if ($tenantId !== null) {
-                    $sql .= ' AND tenant_id = :tenant_id';
-                    $params['tenant_id'] = $tenantId;
-                }
+                
                 $stmt = $this->db->prepare($sql);
                 $stmt->execute($params);
             }
@@ -165,10 +141,7 @@ class RoomTypeRepository
             foreach ($mapping as $oldId => $newId) {
                 $params = ['new_id' => $newId, 'old_id' => $oldId];
                 $sql = 'UPDATE reservations SET room_type_id = :new_id WHERE room_type_id = :old_id';
-                if ($tenantId !== null) {
-                    $sql .= ' AND tenant_id = :tenant_id';
-                    $params['tenant_id'] = $tenantId;
-                }
+                
                 $stmt = $this->db->prepare($sql);
                 $stmt->execute($params);
             }
@@ -178,10 +151,7 @@ class RoomTypeRepository
             if (!empty($oldIds)) {
                 $placeholders = implode(',', array_fill(0, count($oldIds), '?'));
                 $sql = "DELETE FROM room_types WHERE id IN ({$placeholders})";
-                if ($tenantId !== null) {
-                    $sql .= ' AND tenant_id = ?';
-                    $oldIds[] = $tenantId;
-                }
+                
                 $stmt = $this->db->prepare($sql);
                 $stmt->execute($oldIds);
             }

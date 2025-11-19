@@ -16,10 +16,10 @@ class PosSaleRepository
     public function create(array $saleData, array $items): int
     {
         $reference = $saleData['reference'] ?? $this->generateReference();
-        $tenantId = \App\Support\Tenant::id();
+        
         $validItemIds = [];
 
-        // Validate that all item_ids exist and belong to the tenant
+        // Validate that all item_ids exist - filter out invalid ones instead of throwing error
         if (!empty($items)) {
             $itemIds = array_unique(array_filter(array_column($items, 'item_id')));
             
@@ -29,29 +29,33 @@ class PosSaleRepository
                 $sql = "SELECT id FROM pos_items WHERE id IN ($placeholders)";
                 $params = $itemIds;
                 
-                if ($tenantId !== null) {
-                    $sql .= " AND tenant_id = ?";
-                    $params[] = $tenantId;
-                }
-                
                 $checkStmt = $this->db->prepare($sql);
                 $checkStmt->execute($params);
                 
                 $validItemIds = array_column($checkStmt->fetchAll(), 'id');
                 $invalidItemIds = array_diff($itemIds, $validItemIds);
                 
+                // Filter out invalid items instead of throwing error
                 if (!empty($invalidItemIds)) {
-                    throw new \RuntimeException('Invalid or deleted item IDs: ' . implode(', ', $invalidItemIds) . '. Please refresh the POS page and try again.');
+                    // Remove invalid items from the items array
+                    $items = array_filter($items, function($item) use ($validItemIds) {
+                        return in_array((int)($item['item_id'] ?? 0), $validItemIds, true);
+                    });
+                    $items = array_values($items); // Re-index
+                    
+                    // If no valid items remain, throw error
+                    if (empty($items)) {
+                        throw new \RuntimeException('All items in the order are invalid or deleted. Please refresh the POS page and try again.');
+                    }
                 }
             }
         }
 
         $stmt = $this->db->prepare('
-            INSERT INTO pos_sales (tenant_id, reference, user_id, till_id, payment_type, total, notes, reservation_id)
-            VALUES (:tenant_id, :reference, :user_id, :till_id, :payment_type, :total, :notes, :reservation_id)
+            INSERT INTO pos_sales (reference, user_id, till_id, payment_type, total, notes, reservation_id, mpesa_phone, mpesa_checkout_request_id, mpesa_merchant_request_id, mpesa_status, payment_status)
+            VALUES (:reference, :user_id, :till_id, :payment_type, :total, :notes, :reservation_id, :mpesa_phone, :mpesa_checkout_request_id, :mpesa_merchant_request_id, :mpesa_status, :payment_status)
         ');
         $stmt->execute([
-            'tenant_id' => $tenantId,
             'reference' => $reference,
             'user_id' => $saleData['user_id'],
             'till_id' => $saleData['till_id'] ?? null,
@@ -59,6 +63,11 @@ class PosSaleRepository
             'total' => $saleData['total'],
             'notes' => $saleData['notes'] ?? null,
             'reservation_id' => $saleData['reservation_id'] ?? null,
+            'mpesa_phone' => $saleData['mpesa_phone'] ?? null,
+            'mpesa_checkout_request_id' => $saleData['mpesa_checkout_request_id'] ?? null,
+            'mpesa_merchant_request_id' => $saleData['mpesa_merchant_request_id'] ?? null,
+            'mpesa_status' => $saleData['mpesa_status'] ?? null,
+            'payment_status' => $saleData['payment_status'] ?? ($saleData['payment_type'] === 'mpesa' ? 'pending' : ($saleData['payment_type'] === 'cash' ? 'paid' : 'pending')),
         ]);
 
         $saleId = (int)$this->db->lastInsertId();
@@ -103,11 +112,8 @@ class PosSaleRepository
             WHERE 1 = 1
         ';
 
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $sql .= ' AND ps.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
+        
 
         if ($filter === 'today') {
             $sql .= ' AND DATE(ps.created_at) = CURDATE()';
@@ -142,11 +148,8 @@ class PosSaleRepository
             WHERE ps.id = :id
         ';
 
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null) {
-            $sql .= ' AND ps.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
+        
 
         $sql .= ' LIMIT 1';
 
@@ -173,6 +176,33 @@ class PosSaleRepository
         $stmt->execute(['sale_id' => $saleId]);
 
         return $stmt->fetchAll();
+    }
+
+    public function updateMpesaStatus(int $saleId, string $status, ?string $transactionId = null): void
+    {
+        $sql = 'UPDATE pos_sales SET mpesa_status = :status, payment_status = :payment_status';
+        $params = [
+            'id' => $saleId,
+            'status' => $status,
+            'payment_status' => $status === 'completed' ? 'paid' : ($status === 'failed' ? 'failed' : 'pending'),
+        ];
+        
+        if ($transactionId !== null) {
+            $sql .= ', mpesa_transaction_id = :transaction_id';
+            $params['transaction_id'] = $transactionId;
+        }
+        
+        $sql .= ' WHERE id = :id';
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+    }
+
+    public function findByCheckoutRequestId(string $checkoutRequestId): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM pos_sales WHERE mpesa_checkout_request_id = :checkout_request_id LIMIT 1');
+        $stmt->execute(['checkout_request_id' => $checkoutRequestId]);
+        return $stmt->fetch() ?: null;
     }
 
     protected function generateReference(): string

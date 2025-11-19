@@ -17,12 +17,12 @@ ob_start();
 			<p>Monitor real-time performance and quickly jump into sales.</p>
 		</div>
 		<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-			<a class="btn btn-primary" href="<?= base_url('dashboard/pos'); ?>">Open POS</a>
-			<a class="btn btn-outline" href="<?= base_url('dashboard/reports/sales'); ?>">Full Reports</a>
+			<a class="btn btn-primary" href="<?= base_url('staff/dashboard/pos'); ?>">Open POS</a>
+			<a class="btn btn-outline" href="<?= base_url('staff/dashboard/reports/sales'); ?>">Full Reports</a>
 		</div>
 	</header>
 
-	<form method="get" action="<?= base_url('dashboard/pos/dashboard'); ?>" class="filters-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;margin-bottom:1rem;">
+	<form method="get" action="<?= base_url('staff/dashboard/pos/dashboard'); ?>" class="filters-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;margin-bottom:1rem;">
 		<label>
 			<span>Start</span>
 			<input type="date" name="start" value="<?= htmlspecialchars($filters['start']); ?>">
@@ -33,7 +33,7 @@ ob_start();
 		</label>
 		<div style="display:flex;gap:0.5rem;align-items:flex-end;">
 			<button class="btn btn-outline" type="submit">Apply</button>
-			<a class="btn btn-outline" href="<?= base_url('dashboard/pos/dashboard?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 days</a>
+			<a class="btn btn-outline" href="<?= base_url('staff/dashboard/pos/dashboard?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 days</a>
 		</div>
 	</form>
 

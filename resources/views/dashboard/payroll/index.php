@@ -8,7 +8,7 @@ ob_start();
             <h2>Payroll Management</h2>
             <p class="payroll-subtitle">Generate and manage employee payroll</p>
         </div>
-        <form method="post" action="<?= base_url('dashboard/payroll/generate'); ?>" style="display: inline-block;">
+        <form method="post" action="<?= base_url('staff/dashboard/payroll/generate'); ?>" style="display: inline-block;">
             <input type="hidden" name="period" value="<?= htmlspecialchars($period ?? date('Y-m')); ?>">
             <button class="btn btn-primary" type="submit">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -19,7 +19,7 @@ ob_start();
         </form>
     </header>
 
-    <form method="get" action="<?= base_url('dashboard/payroll'); ?>" class="payroll-filters">
+    <form method="get" action="<?= base_url('staff/dashboard/payroll'); ?>" class="payroll-filters">
         <div class="filter-grid">
             <label>
                 <span>Period</span>
@@ -80,7 +80,7 @@ ob_start();
                                 </span>
                             </td>
                             <td>
-                                <a href="<?= base_url('dashboard/payroll/edit?id=' . (int)$payroll['id']); ?>" class="btn btn-outline btn-small">
+                                <a href="<?= base_url('staff/dashboard/payroll/edit?id=' . (int)$payroll['id']); ?>" class="btn btn-outline btn-small">
                                     Edit
                                 </a>
                             </td>

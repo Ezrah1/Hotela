@@ -55,7 +55,7 @@ ob_start();
         <button class="tab" data-tab="seo">SEO</button>
     </div>
 
-    <form method="post" action="<?= base_url('dashboard/website/update'); ?>" class="website-form">
+    <form method="post" action="<?= base_url('staff/dashboard/website/update'); ?>" class="website-form">
         <input type="hidden" name="group" value="website">
 
         <!-- Homepage Tab -->

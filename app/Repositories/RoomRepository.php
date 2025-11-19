@@ -15,14 +15,8 @@ class RoomRepository
 
     protected function tenantCondition(string $alias, array &$params): string
     {
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId === null) {
-            return '';
-        }
-
-        $params['tenant_id'] = $tenantId;
-
-        return " AND {$alias}.tenant_id = :tenant_id";
+        // Single installation - no tenant filtering needed
+        return '';
     }
 
     public function allAvailableBetween(string $startDate, string $endDate): array
@@ -116,7 +110,7 @@ class RoomRepository
         ];
         $condition = $this->tenantCondition('rooms', $params);
         if ($condition) {
-            $sql .= ' AND rooms.tenant_id = :tenant_id';
+            $sql .= ' AND rooms.tenant_id = ';
         }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

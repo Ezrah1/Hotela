@@ -9,7 +9,10 @@ ob_start();
 ?>
 <section class="pos-shell card">
 	<?php if (!empty($_GET['error'])): ?>
-		<div class="alert danger"><?= htmlspecialchars($_GET['error']); ?></div>
+		<div class="alert danger" id="pos-error-alert">
+			<?= htmlspecialchars($_GET['error']); ?>
+			<button type="button" onclick="this.parentElement.remove(); clearInvalidItems();" style="float: right; background: none; border: none; color: inherit; cursor: pointer; font-size: 1.2em; padding: 0 0.5rem;">×</button>
+		</div>
 	<?php elseif (!empty($_GET['success'])): ?>
 		<div class="alert success">Sale recorded successfully.</div>
 	<?php endif; ?>
@@ -85,7 +88,7 @@ ob_start();
 				</div>
 			</header>
 
-			<form method="post" action="<?= base_url('dashboard/pos/sale'); ?>" id="pos-form">
+			<form method="post" action="<?= base_url('staff/dashboard/pos/sale'); ?>" id="pos-form">
 				<div class="pos-cart__lines" id="order-lines">
 					<p class="muted text-center">No items yet. Tap a product to add.</p>
 				</div>
@@ -138,14 +141,8 @@ ob_start();
 						<input type="text" value="<?= htmlspecialchars($user['name'] ?? 'Staff'); ?>" readonly style="background: #f8fafc; color: #1e293b; border: 1px solid #e2e8f0; padding: 0.75rem 1rem; border-radius: 0.5rem; cursor: not-allowed; font-size: 0.95rem; width: 100%;">
 						<small style="color: #64748b; font-size: 0.875rem; margin-top: 0.25rem; display: block;">Order will be recorded under your name</small>
 					</label>
-					<label>
-						<span>Inventory Location</span>
-						<select name="location_id">
-							<?php foreach ($locations as $location): ?>
-								<option value="<?= (int)$location['id']; ?>"><?= htmlspecialchars($location['name']); ?></option>
-							<?php endforeach; ?>
-						</select>
-					</label>
+					<input type="hidden" name="location_id" value="0">
+					<!-- Location is automatically selected based on item stock availability -->
 					<label>
 						<span>Payment Type</span>
 						<select name="payment_type" id="payment-type">
@@ -155,6 +152,11 @@ ob_start();
 							<option value="room">Room Charge</option>
 							<option value="corporate">Corporate</option>
 						</select>
+					</label>
+					<label id="mpesa-phone-field" style="display: none;">
+						<span>M-Pesa Phone Number</span>
+						<input type="tel" name="mpesa_phone" placeholder="254700000000" pattern="[0-9+]{10,15}" required>
+						<small style="color: #64748b; font-size: 0.875rem; margin-top: 0.25rem; display: block;">Enter phone number (e.g., 254700000000 or 0700000000)</small>
 					</label>
 					<label>
 						<span>Order Notes</span>
@@ -183,9 +185,23 @@ const POS = (() => {
 	const totalEl = document.getElementById('order-total');
 	const cartCount = document.getElementById('pos-cart-count');
 	const paymentTypeSelect = document.getElementById('payment-type');
+	const mpesaPhoneField = document.getElementById('mpesa-phone-field');
 	const reservationField = document.getElementById('reservation-field');
 	const customerTypeSelect = document.getElementById('customer-type');
 	const clearBtn = document.getElementById('clear-order');
+	
+	// Show/hide M-Pesa phone field
+	if (paymentTypeSelect && mpesaPhoneField) {
+		paymentTypeSelect.addEventListener('change', function() {
+			if (this.value === 'mpesa') {
+				mpesaPhoneField.style.display = 'block';
+				mpesaPhoneField.querySelector('input').required = true;
+			} else {
+				mpesaPhoneField.style.display = 'none';
+				mpesaPhoneField.querySelector('input').required = false;
+			}
+		});
+	}
 	const cart = document.getElementById('pos-cart');
 	const cartOpen = document.getElementById('cart-open');
 	const cartClose = document.getElementById('cart-close');
@@ -196,6 +212,11 @@ const POS = (() => {
 
 	let order = [];
 	let activeCategory = 'all';
+	
+	// Check if there's an error about invalid items - clear order immediately
+	if (window.location.search.includes('error') && window.location.search.includes('Invalid')) {
+		order = []; // Clear order immediately if error detected
+	}
 
 	const formatMoney = (value) => 'KES ' + Number(value).toFixed(2);
 
@@ -352,6 +373,183 @@ const POS = (() => {
 		categoriesWrapper.dataset.mobileState = state;
 	});
 
+	// Clear invalid items from order
+	function clearInvalidItems() {
+		const availableItemIds = new Set();
+		itemButtons.forEach(btn => {
+			const data = JSON.parse(btn.dataset.item);
+			availableItemIds.add(data.id);
+		});
+
+		const originalLength = order.length;
+		order = order.filter(line => availableItemIds.has(line.id));
+		
+		if (order.length !== originalLength) {
+			renderOrder();
+		}
+	}
+
+	// Validate order items against available items on page load
+	function validateOrderItems() {
+		const availableItemIds = new Set();
+		itemButtons.forEach(btn => {
+			const data = JSON.parse(btn.dataset.item);
+			availableItemIds.add(data.id);
+		});
+
+		// Filter out any items that don't exist in the current item list
+		const originalLength = order.length;
+		order = order.filter(line => availableItemIds.has(line.id));
+		
+		if (order.length !== originalLength) {
+			renderOrder();
+			// Show a warning if items were removed
+			if (originalLength > order.length) {
+				const removedCount = originalLength - order.length;
+				const alert = document.createElement('div');
+				alert.className = 'alert warning';
+				alert.textContent = `${removedCount} item(s) were removed from your cart because they are no longer available.`;
+				alert.style.marginBottom = '1rem';
+				const posShell = document.querySelector('.pos-shell');
+				if (posShell && !posShell.querySelector('.alert.warning')) {
+					posShell.insertBefore(alert, posShell.firstChild);
+					setTimeout(() => alert.remove(), 5000);
+				}
+			}
+		}
+	}
+
+	// Validate items before form submission
+	posForm.addEventListener('submit', (e) => {
+		const availableItemIds = new Set();
+		itemButtons.forEach(btn => {
+			const data = JSON.parse(btn.dataset.item);
+			availableItemIds.add(data.id);
+		});
+
+		const invalidItems = order.filter(line => !availableItemIds.has(line.id));
+		if (invalidItems.length > 0) {
+			e.preventDefault();
+			alert(`Some items in your cart are no longer available. Please refresh the page and try again.`);
+			validateOrderItems();
+			return false;
+		}
+	});
+
+	// Get available item IDs immediately
+	const availableItemIds = new Set();
+	itemButtons.forEach(btn => {
+		try {
+			const data = JSON.parse(btn.dataset.item);
+			availableItemIds.add(data.id);
+		} catch (e) {
+			console.error('Error parsing item data:', e);
+		}
+	});
+
+	// Clear invalid items function
+	function clearInvalidItems() {
+		const originalLength = order.length;
+		order = order.filter(line => availableItemIds.has(line.id));
+		
+		if (order.length !== originalLength) {
+			renderOrder();
+			return true; // Items were removed
+		}
+		return false; // No items removed
+	}
+
+	// Validate order items against available items on page load
+	function validateOrderItems() {
+		const originalLength = order.length;
+		const hadInvalidItems = clearInvalidItems();
+		
+		if (hadInvalidItems) {
+			// Show a warning if items were removed
+			const removedCount = originalLength - order.length;
+			const alert = document.createElement('div');
+			alert.className = 'alert warning';
+			alert.innerHTML = `
+				<strong>⚠️ ${removedCount} item(s) removed</strong>
+				<p>${removedCount} item(s) were removed from your cart because they are no longer available.</p>
+			`;
+			alert.style.marginBottom = '1rem';
+			const posShell = document.querySelector('.pos-shell');
+			if (posShell) {
+				// Remove any existing warning alerts
+				const existingWarnings = posShell.querySelectorAll('.alert.warning');
+				existingWarnings.forEach(w => w.remove());
+				
+				// Insert new warning after error alert if it exists, otherwise at the top
+				const errorAlert = posShell.querySelector('.alert.danger');
+				if (errorAlert) {
+					errorAlert.insertAdjacentElement('afterend', alert);
+				} else {
+					posShell.insertBefore(alert, posShell.firstChild);
+				}
+				setTimeout(() => alert.remove(), 8000);
+			}
+		}
+	}
+
+	// Auto-clear invalid items if error message mentions invalid items
+	const errorAlert = document.getElementById('pos-error-alert');
+	if (errorAlert && (errorAlert.textContent.includes('Invalid or deleted item') || errorAlert.textContent.includes('Invalid'))) {
+		// Clear the order completely when error is detected
+		order = [];
+		renderOrder();
+		
+		// Update error message to be more helpful and actionable
+		errorAlert.innerHTML = `
+			<strong>⚠️ Invalid Items Removed</strong>
+			<p>Some items in your cart were invalid or deleted. Your cart has been automatically cleared. Please add items again.</p>
+			<button type="button" onclick="this.parentElement.remove(); window.history.replaceState({}, '', window.location.pathname);" 
+				style="float: right; background: none; border: none; color: inherit; cursor: pointer; font-size: 1.2em; padding: 0 0.5rem; margin-left: 0.5rem;">×</button>
+		`;
+		
+		// Remove error from URL immediately to prevent resubmission
+		setTimeout(() => {
+			window.history.replaceState({}, '', window.location.pathname);
+		}, 100);
+		
+		// Auto-dismiss error after 5 seconds
+		setTimeout(() => {
+			if (errorAlert && errorAlert.parentElement) {
+				errorAlert.style.transition = 'opacity 0.5s';
+				errorAlert.style.opacity = '0';
+				setTimeout(() => {
+					if (errorAlert && errorAlert.parentElement) {
+						errorAlert.remove();
+					}
+					window.history.replaceState({}, '', window.location.pathname);
+				}, 500);
+			}
+		}, 5000);
+	}
+
+	// Validate items before form submission
+	posForm.addEventListener('submit', (e) => {
+		// Clear invalid items one more time before submission
+		const hadInvalidItems = clearInvalidItems();
+		
+		if (hadInvalidItems) {
+			e.preventDefault();
+			alert('Some items in your cart are no longer available and have been removed. Please review your order and try again.');
+			return false;
+		}
+
+		const invalidItems = order.filter(line => !availableItemIds.has(line.id));
+		if (invalidItems.length > 0) {
+			e.preventDefault();
+			alert(`Some items in your cart are no longer available. Please refresh the page and try again.`);
+			order = [];
+			renderOrder();
+			return false;
+		}
+	});
+
+	// Initial validation and render
+	validateOrderItems();
 	renderItems();
 	renderOrder();
 })();

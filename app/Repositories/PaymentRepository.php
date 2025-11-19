@@ -19,18 +19,17 @@ class PaymentRepository
         
         $stmt = $this->db->prepare('
             INSERT INTO payments (
-                tenant_id, reference, payment_type, expense_id, bill_id, supplier_id,
+                reference, payment_type, expense_id, bill_id, supplier_id,
                 amount, payment_method, payment_date, transaction_reference,
                 cheque_number, bank_name, account_number, notes, status, processed_by
             ) VALUES (
-                :tenant_id, :reference, :payment_type, :expense_id, :bill_id, :supplier_id,
+                :reference, :payment_type, :expense_id, :bill_id, :supplier_id,
                 :amount, :payment_method, :payment_date, :transaction_reference,
                 :cheque_number, :bank_name, :account_number, :notes, :status, :processed_by
             )
         ');
 
         $stmt->execute([
-            'tenant_id' => \App\Support\Tenant::id(),
             'reference' => $reference,
             'payment_type' => $data['payment_type'],
             'expense_id' => $data['expense_id'] ?? null,
@@ -53,7 +52,7 @@ class PaymentRepository
 
     public function find(int $id): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $id];
 
         $sql = "
@@ -72,10 +71,7 @@ class PaymentRepository
             WHERE p.id = :id
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND p.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' LIMIT 1';
 
@@ -87,7 +83,7 @@ class PaymentRepository
 
     public function all(?string $startDate = null, ?string $endDate = null, ?string $paymentType = null, ?string $paymentMethod = null, ?string $status = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -106,10 +102,7 @@ class PaymentRepository
             WHERE 1 = 1
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND p.tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($startDate) {
             $sql .= ' AND DATE(p.payment_date) >= :start_date';
@@ -146,7 +139,7 @@ class PaymentRepository
 
     public function getSummary(?string $startDate = null, ?string $endDate = null): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = "
@@ -164,10 +157,7 @@ class PaymentRepository
             WHERE status = 'completed'
         ";
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($startDate) {
             $sql .= ' AND DATE(payment_date) >= :start_date';
@@ -187,7 +177,7 @@ class PaymentRepository
 
     public function update(int $id, array $data): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'id' => $id,
             'amount' => $data['amount'],
@@ -216,10 +206,7 @@ class PaymentRepository
             WHERE id = :id
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -227,15 +214,12 @@ class PaymentRepository
 
     public function delete(int $id): bool
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $id];
 
         $sql = 'DELETE FROM payments WHERE id = :id';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND tenant_id = :tenant_id';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

@@ -58,11 +58,8 @@ class HRController extends Controller
         }
 
         // Check tenant access
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null && (int)($user['tenant_id'] ?? 0) !== $tenantId) {
-            header('Location: ' . base_url('dashboard/hr?error=Access%20denied'));
-            return;
-        }
+        
+        // Single installation - no tenant access check needed
 
         // Get employee records
         $records = $this->getEmployeeRecords($userId);
@@ -98,11 +95,8 @@ class HRController extends Controller
         }
 
         // Check tenant access
-        $tenantId = \App\Support\Tenant::id();
-        if ($tenantId !== null && (int)($user['tenant_id'] ?? 0) !== $tenantId) {
-            header('Location: ' . base_url('dashboard/hr?error=Access%20denied'));
-            return;
-        }
+        
+        // Single installation - no tenant access check needed
 
         $this->createEmployeeRecord($userId, $type, $title, $description);
 
@@ -112,7 +106,7 @@ class HRController extends Controller
     protected function getEmployeeRecords(?int $userId = null): array
     {
         try {
-            $tenantId = \App\Support\Tenant::id();
+            
             $params = [];
 
             $sql = "
@@ -125,11 +119,6 @@ class HRController extends Controller
             if ($userId) {
                 $sql .= ' AND employee_records.user_id = :user_id';
                 $params['user_id'] = $userId;
-            }
-
-            if ($tenantId !== null) {
-                $sql .= ' AND employee_records.tenant_id = :tenant_id';
-                $params['tenant_id'] = $tenantId;
             }
 
             $sql .= ' ORDER BY employee_records.created_at DESC LIMIT 50';
@@ -150,21 +139,15 @@ class HRController extends Controller
     protected function getPayrollHistory(int $userId): array
     {
         try {
-            $tenantId = \App\Support\Tenant::id();
+            
             $params = ['user_id' => $userId];
 
             $sql = "
                 SELECT payroll.*
                 FROM payroll
                 WHERE payroll.user_id = :user_id
+                ORDER BY payroll.pay_period_end DESC LIMIT 12
             ";
-
-            if ($tenantId !== null) {
-                $sql .= ' AND payroll.tenant_id = :tenant_id';
-                $params['tenant_id'] = $tenantId;
-            }
-
-            $sql .= ' ORDER BY payroll.pay_period_end DESC LIMIT 12';
 
             $stmt = db()->prepare($sql);
             $stmt->execute($params);
@@ -193,16 +176,15 @@ class HRController extends Controller
     protected function createEmployeeRecord(int $userId, string $type, string $title, string $description): void
     {
         try {
-            $tenantId = \App\Support\Tenant::id();
+            
             $currentUser = Auth::user();
 
             $sql = "
-                INSERT INTO employee_records (tenant_id, user_id, type, title, description, created_by, created_at)
-                VALUES (:tenant_id, :user_id, :type, :title, :description, :created_by, NOW())
+                INSERT INTO employee_records (user_id, type, title, description, created_by, created_at)
+                VALUES (:user_id, :type, :title, :description, :created_by, NOW())
             ";
 
             $params = [
-                'tenant_id' => $tenantId,
                 'user_id' => $userId,
                 'type' => $type,
                 'title' => $title,

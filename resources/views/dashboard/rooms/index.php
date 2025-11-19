@@ -31,8 +31,8 @@ ob_start();
             $canEdit = in_array($user['role'] ?? '', ['admin', 'operation_manager'], true);
             if ($canEdit):
             ?>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/rooms/select-edit'); ?>">Edit Room</a>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/rooms/types'); ?>">Room Types</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/rooms/select-edit'); ?>">Edit Room</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/rooms/types'); ?>">Room Types</a>
             <?php endif; ?>
         </div>
     </header>
@@ -94,7 +94,7 @@ ob_start();
                     <?php endif; ?>
                 </td>
                 <td>
-                    <form method="post" action="<?= base_url('dashboard/rooms/update-status'); ?>" style="display: inline;">
+                    <form method="post" action="<?= base_url('staff/dashboard/rooms/update-status'); ?>" style="display: inline;">
                         <input type="hidden" name="room_id" value="<?= (int)$room['id']; ?>">
                         <select name="status" onchange="this.form.submit()" style="padding: 0.35rem 0.5rem; border: 1px solid #cbd5f5; border-radius: 0.375rem;">
                             <option value="available" <?= $room['status'] === 'available' ? 'selected' : ''; ?>>Available</option>
@@ -104,7 +104,7 @@ ob_start();
                         </select>
                     </form>
                     <?php if (!empty($room['current_reservation'])): ?>
-                        <a class="btn btn-outline btn-small" href="<?= base_url('dashboard/bookings/folio?reservation_id=' . (int)$room['current_reservation']['id']); ?>" style="margin-left: 0.5rem;">View Booking</a>
+                        <a class="btn btn-outline btn-small" href="<?= base_url('staff/dashboard/bookings/folio?reservation_id=' . (int)$room['current_reservation']['id']); ?>" style="margin-left: 0.5rem;">View Booking</a>
                     <?php endif; ?>
                 </td>
             </tr>

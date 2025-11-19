@@ -339,7 +339,7 @@ class RoleDashboard
 
     protected function recentInventoryMovements(int $limit = 5): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $sql = '
             SELECT m.type, m.quantity, m.reference, m.notes, m.created_at,
                    i.name AS item_name, l.name AS location_name
@@ -349,10 +349,7 @@ class RoleDashboard
         ';
         $params = [];
         $where = [];
-        if ($tenantId !== null) {
-            $where[] = '(m.tenant_id = :tenant OR m.tenant_id IS NULL)';
-            $params['tenant'] = $tenantId;
-        }
+        
         if ($where) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }

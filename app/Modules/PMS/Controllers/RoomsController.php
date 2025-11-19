@@ -189,7 +189,7 @@ class RoomsController extends Controller
         $roomType = $this->roomTypes->find($roomTypeId);
 
         if (!$roomType) {
-            header('Location: ' . base_url('dashboard/rooms/types?error=Room%20type%20not%20found'));
+            header('Location: ' . base_url('staff/dashboard/rooms/types?error=Room%20type%20not%20found'));
             return;
         }
 
@@ -212,7 +212,7 @@ class RoomsController extends Controller
         $roomType = $this->roomTypes->find($roomTypeId);
 
         if (!$roomType) {
-            header('Location: ' . base_url('dashboard/rooms/types?error=Room%20type%20not%20found'));
+            header('Location: ' . base_url('staff/dashboard/rooms/types?error=Room%20type%20not%20found'));
             return;
         }
 
@@ -235,7 +235,7 @@ class RoomsController extends Controller
                     $updateData['image'] = $imagePath;
                 }
             } catch (\Exception $e) {
-                header('Location: ' . base_url('dashboard/rooms/edit-type?room_type_id=' . $roomTypeId . '&error=' . urlencode($e->getMessage())));
+                header('Location: ' . base_url('staff/dashboard/rooms/edit-type?room_type_id=' . $roomTypeId . '&error=' . urlencode($e->getMessage())));
                 return;
             }
         } elseif ($request->input('image') === '') {
@@ -258,7 +258,7 @@ class RoomsController extends Controller
 
         $this->roomTypes->update($roomTypeId, $updateData);
 
-        header('Location: ' . base_url('dashboard/rooms/types?success=updated'));
+        header('Location: ' . base_url('staff/dashboard/rooms/types?success=updated'));
     }
 
     public function createRoomType(Request $request): void
@@ -268,7 +268,7 @@ class RoomsController extends Controller
         if ($request->method() === 'POST') {
             $name = trim($request->input('name', ''));
             if ($name === '') {
-                header('Location: ' . base_url('dashboard/rooms/types?error=Name%20is%20required'));
+                header('Location: ' . base_url('staff/dashboard/rooms/types?error=Name%20is%20required'));
                 return;
             }
 
@@ -285,7 +285,7 @@ class RoomsController extends Controller
                     $uploadService = new \App\Services\FileUploadService();
                     $imagePath = $uploadService->uploadImage($_FILES['image'], 'room-types');
                 } catch (\Exception $e) {
-                    header('Location: ' . base_url('dashboard/rooms/types?error=' . urlencode($e->getMessage())));
+                    header('Location: ' . base_url('staff/dashboard/rooms/types?error=' . urlencode($e->getMessage())));
                     return;
                 }
             }
@@ -299,7 +299,7 @@ class RoomsController extends Controller
                 'image' => $imagePath,
             ]);
 
-            header('Location: ' . base_url('dashboard/rooms/types?success=created'));
+            header('Location: ' . base_url('staff/dashboard/rooms/types?success=created'));
             return;
         }
 
@@ -315,11 +315,11 @@ class RoomsController extends Controller
         $deleted = $this->roomTypes->delete($roomTypeId);
 
         if (!$deleted) {
-            header('Location: ' . base_url('dashboard/rooms/types?error=Cannot%20delete%20room%20type%20in%20use'));
+            header('Location: ' . base_url('staff/dashboard/rooms/types?error=Cannot%20delete%20room%20type%20in%20use'));
             return;
         }
 
-        header('Location: ' . base_url('dashboard/rooms/types?success=deleted'));
+        header('Location: ' . base_url('staff/dashboard/rooms/types?success=deleted'));
     }
 
     public function replaceRoomTypes(Request $request): void
@@ -392,9 +392,9 @@ class RoomsController extends Controller
             // Replace all old types with new ones
             $this->roomTypes->replaceAll($mapping);
 
-            header('Location: ' . base_url('dashboard/rooms/types?success=replaced'));
+            header('Location: ' . base_url('staff/dashboard/rooms/types?success=replaced'));
         } catch (\Exception $e) {
-            header('Location: ' . base_url('dashboard/rooms/types?error=' . urlencode($e->getMessage())));
+            header('Location: ' . base_url('staff/dashboard/rooms/types?error=' . urlencode($e->getMessage())));
         }
     }
 }

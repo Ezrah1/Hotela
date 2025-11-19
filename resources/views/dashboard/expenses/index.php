@@ -32,10 +32,10 @@ ob_start();
             <h2>Expenses Management</h2>
             <p class="expenses-subtitle">Track and manage general business expenses for <?= htmlspecialchars($dateRangeLabel); ?></p>
             <p style="margin: 0.5rem 0 0 0; font-size: 0.875rem; color: #64748b;">
-                <a href="<?= base_url('dashboard/bills'); ?>" style="color: var(--primary); text-decoration: none;">View Bills →</a>
+                <a href="<?= base_url('staff/dashboard/bills'); ?>" style="color: var(--primary); text-decoration: none;">View Bills →</a>
             </p>
         </div>
-        <a href="<?= base_url('dashboard/expenses/create'); ?>" class="btn btn-primary">
+        <a href="<?= base_url('staff/dashboard/expenses/create'); ?>" class="btn btn-primary">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -65,7 +65,7 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <form method="get" action="<?= base_url('dashboard/expenses'); ?>" class="expenses-filters">
+    <form method="get" action="<?= base_url('staff/dashboard/expenses'); ?>" class="expenses-filters">
         <div class="filter-grid">
             <label>
                 <span>Start Date</span>
@@ -120,8 +120,8 @@ ob_start();
             </label>
             <div class="filter-actions">
                 <button class="btn btn-primary" type="submit">Apply Filters</button>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/expenses?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
-                <a class="btn btn-outline" href="<?= base_url('dashboard/expenses?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/expenses?start=' . urlencode(date('Y-m-01')) . '&end=' . urlencode(date('Y-m-d'))); ?>">This Month</a>
+                <a class="btn btn-outline" href="<?= base_url('staff/dashboard/expenses?start=' . urlencode(date('Y-m-d', strtotime('-6 days'))) . '&end=' . urlencode(date('Y-m-d'))); ?>">Last 7 Days</a>
             </div>
         </div>
     </form>
@@ -293,7 +293,7 @@ ob_start();
                                 </td>
                                 <td>
                                     <?php if (!empty($expense['supplier_name'])): ?>
-                                        <a href="<?= base_url('dashboard/suppliers/show?id=' . $expense['supplier_id']); ?>" class="supplier-link">
+                                        <a href="<?= base_url('staff/dashboard/suppliers/show?id=' . $expense['supplier_id']); ?>" class="supplier-link">
                                             <?= htmlspecialchars($expense['supplier_name']); ?>
                                         </a>
                                     <?php else: ?>
@@ -310,14 +310,14 @@ ob_start();
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <a href="<?= base_url('dashboard/expenses/show?id=' . $expense['id']); ?>" class="btn-icon" title="View">
+                                        <a href="<?= base_url('staff/dashboard/expenses/show?id=' . $expense['id']); ?>" class="btn-icon" title="View">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                                 <circle cx="12" cy="12" r="3"></circle>
                                             </svg>
                                         </a>
                                         <?php if (in_array($expense['status'], ['pending', 'approved'])): ?>
-                                            <a href="<?= base_url('dashboard/expenses/edit?id=' . $expense['id']); ?>" class="btn-icon" title="Edit">
+                                            <a href="<?= base_url('staff/dashboard/expenses/edit?id=' . $expense['id']); ?>" class="btn-icon" title="Edit">
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -325,7 +325,7 @@ ob_start();
                                             </a>
                                         <?php endif; ?>
                                         <?php if ($expense['status'] === 'pending'): ?>
-                                            <a href="<?= base_url('dashboard/expenses/approve?id=' . $expense['id']); ?>" class="btn-icon btn-approve" title="Approve" onclick="return confirm('Approve this expense?');">
+                                            <a href="<?= base_url('staff/dashboard/expenses/approve?id=' . $expense['id']); ?>" class="btn-icon btn-approve" title="Approve" onclick="return confirm('Approve this expense?');">
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                                                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
@@ -333,7 +333,7 @@ ob_start();
                                             </a>
                                         <?php endif; ?>
                                         <?php if ($expense['status'] === 'approved'): ?>
-                                            <a href="<?= base_url('dashboard/expenses/mark-paid?id=' . $expense['id']); ?>" class="btn-icon btn-paid" title="Mark as Paid" onclick="return confirm('Mark this expense as paid? This will update the supplier balance.');">
+                                            <a href="<?= base_url('staff/dashboard/expenses/mark-paid?id=' . $expense['id']); ?>" class="btn-icon btn-paid" title="Mark as Paid" onclick="return confirm('Mark this expense as paid? This will update the supplier balance.');">
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <line x1="12" y1="1" x2="12" y2="23"></line>
                                                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>

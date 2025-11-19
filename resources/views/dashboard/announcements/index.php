@@ -26,7 +26,7 @@ ob_start();
         </div>
         <div class="header-actions">
             <?php if ($canCreate): ?>
-                <a href="<?= base_url('dashboard/announcements/create'); ?>" class="btn btn-primary">
+                <a href="<?= base_url('staff/dashboard/announcements/create'); ?>" class="btn btn-primary">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -70,7 +70,7 @@ ob_start();
         <?php else: ?>
             <div class="announcements-list">
                 <?php foreach ($announcements as $announcement): ?>
-                    <a href="<?= base_url('dashboard/announcements/view?id=' . $announcement['id']); ?>" class="announcement-item <?= !$announcement['is_read'] ? 'unread' : ''; ?> priority-<?= $announcement['priority']; ?>">
+                    <a href="<?= base_url('staff/dashboard/announcements/view?id=' . $announcement['id']); ?>" class="announcement-item <?= !$announcement['is_read'] ? 'unread' : ''; ?> priority-<?= $announcement['priority']; ?>">
                         <div class="announcement-indicator"></div>
                         <div class="announcement-content">
                             <div class="announcement-header">

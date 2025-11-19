@@ -8,7 +8,7 @@ ob_start();
             <h2>Edit User</h2>
             <p class="user-edit-subtitle">Update user information and role</p>
         </div>
-        <a class="btn btn-ghost" href="<?= base_url('dashboard/staff'); ?>">
+        <a class="btn btn-ghost" href="<?= base_url('staff/dashboard/staff'); ?>">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -20,7 +20,7 @@ ob_start();
         <div class="alert danger"><?= htmlspecialchars($_GET['error']); ?></div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('dashboard/staff/update'); ?>" class="user-edit-form">
+    <form method="post" action="<?= base_url('staff/dashboard/staff/update'); ?>" class="user-edit-form">
         <input type="hidden" name="user_id" value="<?= (int)$user['id']; ?>">
 
         <div class="form-section">
@@ -68,7 +68,7 @@ ob_start();
                 </svg>
                 Update User
             </button>
-            <a class="btn btn-outline" href="<?= base_url('dashboard/staff'); ?>">Cancel</a>
+            <a class="btn btn-outline" href="<?= base_url('staff/dashboard/staff'); ?>">Cancel</a>
         </div>
     </form>
 </section>

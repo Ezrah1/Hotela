@@ -8,12 +8,26 @@ ob_start();
             <h2>Inventory</h2>
             <p class="inventory-subtitle">Manage stock levels and track inventory</p>
         </div>
-        <?php if ($valuation !== null): ?>
-            <div class="valuation-badge">
-                <span class="valuation-label">Total Valuation</span>
-                <span class="valuation-value">KES <?= number_format((float)$valuation, 2); ?></span>
-            </div>
-        <?php endif; ?>
+        <div class="header-actions">
+            <?php
+            $userRole = (\App\Support\Auth::user()['role_key'] ?? (\App\Support\Auth::user()['role'] ?? ''));
+            if (in_array($userRole, ['admin', 'operation_manager'])):
+            ?>
+                <a href="<?= base_url('staff/dashboard/inventory/item/create'); ?>" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Item
+                </a>
+            <?php endif; ?>
+            <?php if ($valuation !== null): ?>
+                <div class="valuation-badge">
+                    <span class="valuation-label">Total Valuation</span>
+                    <span class="valuation-value">KES <?= number_format((float)$valuation, 2); ?></span>
+                </div>
+            <?php endif; ?>
+        </div>
     </header>
 
     <?php if (!empty($_GET['error'])): ?>
@@ -49,7 +63,7 @@ ob_start();
             $userRole = (\App\Support\Auth::user()['role_key'] ?? (\App\Support\Auth::user()['role'] ?? ''));
             if (in_array($userRole, ['admin','operation_manager'])):
             ?>
-                <form method="post" action="<?= base_url('dashboard/inventory/auto-import'); ?>" style="margin-top: 0.75rem;">
+                <form method="post" action="<?= base_url('staff/dashboard/inventory/auto-import'); ?>" style="margin-top: 0.75rem;">
                     <button class="btn btn-primary btn-small" type="submit">Auto-import & Map</button>
                 </form>
             <?php endif; ?>
@@ -58,7 +72,7 @@ ob_start();
 
     <div class="inventory-actions">
         <?php if (!empty($canRequisitions)): ?>
-            <a href="<?= base_url('dashboard/inventory/requisitions'); ?>" class="action-card">
+            <a href="<?= base_url('staff/dashboard/inventory/requisitions'); ?>" class="action-card">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
@@ -91,7 +105,7 @@ ob_start();
             </div>
         <?php endif; ?>
         <?php if (!empty($canApprove)): ?>
-            <a href="<?= base_url('dashboard/inventory/requisitions'); ?>" class="action-card">
+            <a href="<?= base_url('staff/dashboard/inventory/requisitions'); ?>" class="action-card">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
@@ -137,7 +151,7 @@ ob_start();
     <?php endif; ?>
 
     <div class="inventory-filters">
-        <form method="get" action="<?= base_url('dashboard/inventory'); ?>" class="filter-form">
+        <form method="get" action="<?= base_url('staff/dashboard/inventory'); ?>" class="filter-form">
             <div class="filter-inputs">
                 <label>
                     <span>Category</span>
@@ -156,7 +170,7 @@ ob_start();
                 </label>
                 <button class="btn btn-outline" type="submit">Apply Filters</button>
                 <?php if ($activeCategory || $search): ?>
-                    <a href="<?= base_url('dashboard/inventory'); ?>" class="btn btn-ghost">Clear</a>
+                    <a href="<?= base_url('staff/dashboard/inventory'); ?>" class="btn btn-ghost">Clear</a>
                 <?php endif; ?>
             </div>
         </form>
@@ -194,6 +208,28 @@ ob_start();
                         <td>
                             <div class="item-name-cell">
                                 <strong><?= htmlspecialchars($row['name'] ?? ''); ?></strong>
+                                <?php
+                                $userRole = (\App\Support\Auth::user()['role_key'] ?? (\App\Support\Auth::user()['role'] ?? ''));
+                                if (in_array($userRole, ['admin', 'operation_manager'])):
+                                ?>
+                                    <div class="item-actions">
+                                        <a href="<?= base_url('staff/dashboard/inventory/item/edit?id=' . (int)$row['id']); ?>" class="action-link" title="Edit">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                        </a>
+                                        <form method="post" action="<?= base_url('staff/dashboard/inventory/item/delete'); ?>" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this item?');">
+                                            <input type="hidden" name="id" value="<?= (int)$row['id']; ?>">
+                                            <button type="submit" class="action-link danger" title="Delete">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </td>
                         <td>
@@ -230,6 +266,18 @@ ob_start();
     margin-bottom: 2rem;
     padding-bottom: 1.5rem;
     border-bottom: 1px solid #e2e8f0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .inventory-header h2 {
@@ -508,6 +556,42 @@ ob_start();
 
 .item-name-cell {
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.item-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.item-name-cell:hover .item-actions {
+    opacity: 1;
+}
+
+.action-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem;
+    color: #64748b;
+    text-decoration: none;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.action-link:hover {
+    color: var(--primary);
+}
+
+.action-link.danger:hover {
+    color: #ef4444;
 }
 
 .sku-badge {

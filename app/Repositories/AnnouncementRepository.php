@@ -15,20 +15,19 @@ class AnnouncementRepository
 
     public function create(array $data): int
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         
         $stmt = $this->db->prepare('
             INSERT INTO announcements (
-                tenant_id, author_id, title, content, target_audience,
+                author_id, title, content, target_audience,
                 target_roles, target_users, priority, status, publish_at, expires_at
             ) VALUES (
-                :tenant_id, :author_id, :title, :content, :target_audience,
+                :author_id, :title, :content, :target_audience,
                 :target_roles, :target_users, :priority, :status, :publish_at, :expires_at
             )
         ');
 
         $stmt->execute([
-            'tenant_id' => $tenantId,
             'author_id' => $data['author_id'],
             'title' => $data['title'],
             'content' => $data['content'],
@@ -46,7 +45,7 @@ class AnnouncementRepository
 
     public function find(int $id): ?array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $id];
 
         $sql = '
@@ -59,10 +58,7 @@ class AnnouncementRepository
             WHERE a.id = :id
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (a.tenant_id IS NULL OR a.tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $sql .= ' LIMIT 1';
 
@@ -84,7 +80,7 @@ class AnnouncementRepository
 
     public function all(?string $status = null, ?int $userId = null, ?string $roleKey = null, int $limit = 100): array
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = '
@@ -106,10 +102,7 @@ class AnnouncementRepository
             WHERE 1 = 1
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (a.tenant_id IS NULL OR a.tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($status) {
             $sql .= ' AND a.status = :status';
@@ -174,7 +167,7 @@ class AnnouncementRepository
 
     public function update(int $id, array $data): void
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [
             'id' => $id,
             'title' => $data['title'],
@@ -203,10 +196,7 @@ class AnnouncementRepository
             WHERE id = :id
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (tenant_id IS NULL OR tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -214,15 +204,12 @@ class AnnouncementRepository
 
     public function delete(int $id): bool
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = ['id' => $id];
 
         $sql = 'DELETE FROM announcements WHERE id = :id';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (tenant_id IS NULL OR tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -246,7 +233,7 @@ class AnnouncementRepository
 
     public function getUnreadCount(?int $userId = null, ?string $roleKey = null): int
     {
-        $tenantId = \App\Support\Tenant::id();
+        
         $params = [];
 
         $sql = '
@@ -257,10 +244,7 @@ class AnnouncementRepository
             AND (a.expires_at IS NULL OR a.expires_at >= NOW())
         ';
 
-        if ($tenantId !== null) {
-            $sql .= ' AND (a.tenant_id IS NULL OR a.tenant_id = :tenant_id)';
-            $params['tenant_id'] = $tenantId;
-        }
+        
 
         if ($userId || $roleKey) {
             $conditions = ['a.target_audience = \'all\''];

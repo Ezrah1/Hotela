@@ -50,7 +50,7 @@ $poweredByEnabled = ($website['powered_by_hotela'] ?? true) !== false;
     <meta name="description" content="<?= htmlspecialchars($metaDescription); ?>">
     <meta name="keywords" content="<?= htmlspecialchars($metaKeywords); ?>">
     <title><?= htmlspecialchars($metaTitle); ?></title>
-    <link rel="stylesheet" href="<?= asset('css/main.css'); ?>">
+    <link rel="stylesheet" href="<?= asset('css/main.css?v=' . time()); ?>">
     <link rel="icon" href="<?= asset('assets/img/favicon.svg'); ?>" type="image/svg+xml">
     <!-- Font Awesome (icons for category fallbacks on menu) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/J6MdZ0OZbG8WsK3p1w1j6MZ9p3G5w5qUO5l5d9zF5lY3hQbq9i3o7Ytqz6v0xG4l7+Dz3u6Qw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -71,35 +71,41 @@ $poweredByEnabled = ($website['powered_by_hotela'] ?? true) !== false;
         <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
         <label for="nav-toggle" class="nav-toggle-label" aria-label="Toggle navigation">
             <span></span>
+            <span></span>
+            <span></span>
         </label>
         <nav class="nav public-nav">
-            <a href="<?= base_url('/'); ?>">Home</a>
-            <?php if (!empty($pages['rooms'])): ?>
-                <a href="<?= base_url('rooms'); ?>">Rooms</a>
-            <?php endif; ?>
-            <?php if (!empty($pages['food'])): ?>
-                <a href="<?= base_url('drinks-food'); ?>">Drinks & Food</a>
-            <?php endif; ?>
-            <?php if (!empty($pages['about'])): ?>
-                <a href="<?= base_url('about'); ?>">About</a>
-            <?php endif; ?>
-            <?php if (!empty($pages['contact'])): ?>
-                <a href="<?= base_url('contact'); ?>">Contact</a>
-            <?php endif; ?>
-            <?php if ($bookingEnabled): ?>
-                <a class="btn btn-primary btn-small highlight" href="<?= $bookingLink; ?>">Book Now</a>
-            <?php endif; ?>
-            <?php
-            if ($guestPortal) {
-                $guestName = $guestPortal['guest_name'] ?? '';
-                $firstName = $guestName ? explode(' ', trim($guestName))[0] : 'Guest';
-                ?>
-                <a class="btn btn-ghost btn-small" href="<?= base_url('guest/portal'); ?>">
-                    <?= htmlspecialchars("Hi, {$firstName}"); ?>
-                </a>
-            <?php } else { ?>
-                <a class="btn btn-ghost btn-small" href="<?= base_url('guest/login'); ?>">My Account</a>
-            <?php } ?>
+            <div class="nav-main">
+                <a href="<?= base_url('/'); ?>">Home</a>
+                <?php if (!empty($pages['rooms'])): ?>
+                    <a href="<?= base_url('rooms'); ?>">Rooms</a>
+                <?php endif; ?>
+                <?php if (!empty($pages['food'])): ?>
+                    <a href="<?= base_url('drinks-food'); ?>">Dining</a>
+                <?php endif; ?>
+                <?php if (!empty($pages['about'])): ?>
+                    <a href="<?= base_url('about'); ?>">About</a>
+                <?php endif; ?>
+                <?php if (!empty($pages['contact'])): ?>
+                    <a href="<?= base_url('contact'); ?>">Contact</a>
+                <?php endif; ?>
+            </div>
+            <div class="nav-actions">
+                <?php
+                if ($guestPortal) {
+                    $guestName = $guestPortal['guest_name'] ?? '';
+                    $firstName = $guestName ? explode(' ', trim($guestName))[0] : 'Guest';
+                    ?>
+                    <a class="nav-account" href="<?= base_url('guest/portal'); ?>">
+                        <?= htmlspecialchars($firstName); ?>
+                    </a>
+                <?php } else { ?>
+                    <a class="nav-account" href="<?= base_url('guest/login'); ?>">Account</a>
+                <?php } ?>
+                <?php if ($bookingEnabled): ?>
+                    <a class="btn btn-primary btn-small" href="<?= $bookingLink; ?>">Book Now</a>
+                <?php endif; ?>
+            </div>
         </nav>
     </div>
 </header>

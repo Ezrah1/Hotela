@@ -15,14 +15,14 @@ ob_start();
 <section class="card">
     <header class="booking-staff-header">
         <h2>Edit Booking: <?= htmlspecialchars($reservation['reference']); ?></h2>
-        <a class="btn btn-outline" href="<?= base_url('dashboard/bookings'); ?>">Back to Bookings</a>
+        <a class="btn btn-outline" href="<?= base_url('staff/dashboard/bookings'); ?>">Back to Bookings</a>
     </header>
 
     <?php if (!empty($_GET['error'])): ?>
         <div class="alert danger"><?= htmlspecialchars($_GET['error']); ?></div>
     <?php endif; ?>
 
-    <form method="post" action="<?= base_url('dashboard/bookings/update'); ?>" style="margin-top: 1.5rem;">
+    <form method="post" action="<?= base_url('staff/dashboard/bookings/update'); ?>" style="margin-top: 1.5rem;">
         <input type="hidden" name="reservation_id" value="<?= (int)$reservation['id']; ?>">
 
         <div class="form-grid">
@@ -108,7 +108,7 @@ ob_start();
 
         <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem;">
             <button class="btn btn-primary" type="submit">Update Booking</button>
-            <a class="btn btn-outline" href="<?= base_url('dashboard/bookings'); ?>">Cancel</a>
+            <a class="btn btn-outline" href="<?= base_url('staff/dashboard/bookings'); ?>">Cancel</a>
         </div>
     </form>
 </section>

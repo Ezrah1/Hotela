@@ -114,41 +114,24 @@ $slot = function () use (
     $highlights
 ) {
     ob_start(); ?>
-    <section class="hero hero-layered">
-        <div class="container hero-layered__container">
-            <?php
-            $boxClasses = ['hero-layered__box'];
-            $boxStyle = '';
-            if (!empty($heroBackgroundImage)) {
-                $boxClasses[] = 'hero-layered__box--photo';
-                $boxStyle = "background-image: url('" . htmlspecialchars(asset($heroBackgroundImage)) . "');";
-            }
-            ?>
-            <div class="<?= implode(' ', $boxClasses); ?>" <?= $boxStyle ? 'style="' . $boxStyle . '"' : ''; ?>>
-                <div class="hero-layered__brand">
-                    <img src="<?= asset(settings('branding.logo', 'assets/img/hotela-logo.svg')); ?>" alt="<?= htmlspecialchars($brandName); ?> logo">
-                    <div class="hero-layered__brand-text">
-                        <h1><?= htmlspecialchars($brandName); ?></h1>
-                        <p><?= htmlspecialchars($brandTagline); ?></p>
+    <section class="hero hero-simple">
+        <div class="container">
+            <div class="hero-simple__content">
+                <?php if (!empty($heroBackgroundImage)): ?>
+                    <div class="hero-simple__image">
+                        <img src="<?= htmlspecialchars(asset($heroBackgroundImage)); ?>" alt="<?= htmlspecialchars($brandName); ?>">
                     </div>
-                </div>
-                <p class="hero-layered__summary"><?= htmlspecialchars($website['promo_message'] ?? 'Thoughtfully curated spaces with seamless digital touchpoints.'); ?></p>
-                <div class="hero-layered__actions">
-                    <a class="btn btn-primary" href="<?= $bookingLink; ?>">Book a Stay</a>
-                    <?php if (!empty($pages['rooms'])): ?>
-                        <a class="btn btn-outline" href="<?= base_url('rooms'); ?>">View Rooms</a>
-                    <?php endif; ?>
-                    <?php if (!empty($website['order_enabled']) && !empty($pages['order'])): ?>
-                        <a class="btn btn-ghost" href="<?= $orderLink; ?>">Dining & Drinks</a>
-                    <?php endif; ?>
-                </div>
-                <div class="hero-stats stats-grid">
-                    <?php foreach ($highlights as $highlight): ?>
-                        <div>
-                            <span><?= htmlspecialchars($highlight['title']); ?></span>
-                            <p><?= htmlspecialchars($highlight['text']); ?></p>
-                        </div>
-                    <?php endforeach; ?>
+                <?php endif; ?>
+                <div class="hero-simple__text">
+                    <h1><?= htmlspecialchars($website['hero_heading'] ?? $brandName); ?></h1>
+                    <p class="hero-simple__tagline"><?= htmlspecialchars($website['hero_tagline'] ?? $brandTagline); ?></p>
+                    <p class="hero-simple__summary"><?= htmlspecialchars($website['promo_message'] ?? 'Thoughtfully curated spaces with seamless digital touchpoints.'); ?></p>
+                    <div class="hero-simple__actions">
+                        <a class="btn btn-primary" href="<?= $bookingLink; ?>"><?= htmlspecialchars($website['hero_cta_text'] ?? 'Book a Stay'); ?></a>
+                        <?php if (!empty($pages['rooms'])): ?>
+                            <a class="btn btn-outline" href="<?= base_url('rooms'); ?>">View Rooms</a>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>
@@ -184,8 +167,10 @@ $slot = function () use (
             <div class="feature-grid">
                 <?php foreach ($roomTypes as $type): ?>
                     <?php
-                    $photo = $type['hero_image'] ?? $type['cover_image'] ?? null;
-                    if (!$photo) {
+                    $photo = $type['image'] ?? null;
+                    if ($photo) {
+                        $photo = asset($photo);
+                    } else {
                         $photo = 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80';
                     }
                     $roomAmenities = [];
