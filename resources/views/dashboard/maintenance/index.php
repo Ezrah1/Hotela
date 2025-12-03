@@ -83,6 +83,24 @@ ob_start();
     <div class="maintenance-filters">
         <form method="get" action="<?= base_url('staff/dashboard/maintenance'); ?>" class="filter-form">
             <div class="filter-grid">
+                <?php if ($canViewAll ?? false): ?>
+                    <label>
+                        <span>View</span>
+                        <select name="filter" class="modern-select">
+                            <option value="all" <?= ($filters['filter'] ?? 'all') === 'all' ? 'selected' : ''; ?>>All Requests</option>
+                            <option value="department" <?= ($filters['filter'] ?? '') === 'department' ? 'selected' : ''; ?>>My Department</option>
+                            <option value="mine" <?= ($filters['filter'] ?? '') === 'mine' ? 'selected' : ''; ?>>My Requests</option>
+                        </select>
+                    </label>
+                <?php else: ?>
+                    <label>
+                        <span>View</span>
+                        <select name="filter" class="modern-select">
+                            <option value="department" <?= ($filters['filter'] ?? 'department') === 'department' ? 'selected' : ''; ?>>My Department</option>
+                            <option value="mine" <?= ($filters['filter'] ?? '') === 'mine' ? 'selected' : ''; ?>>My Requests</option>
+                        </select>
+                    </label>
+                <?php endif; ?>
                 <label>
                     <span>Status</span>
                     <select name="status" class="modern-select">
@@ -246,23 +264,26 @@ ob_start();
                                     $currentUser = \App\Support\Auth::user();
                                     $userRole = $currentUser['role_key'] ?? '';
                                     $status = strtolower($req['status'] ?? 'pending');
+                                    $canVerifyOps = \App\Support\DepartmentHelper::canVerifyOperations($userRole);
+                                    $canApproveFinance = \App\Support\DepartmentHelper::canApproveFinance($userRole);
+                                    $canAssignSuppliers = \App\Support\DepartmentHelper::canAssignSuppliers($userRole);
                                     
                                     // Show workflow actions based on status and role
-                                    if ($status === 'pending' && in_array($userRole, ['admin', 'operation_manager', 'director'], true)): ?>
+                                    if ($status === 'pending' && $canVerifyOps): ?>
                                         <a href="<?= base_url('staff/dashboard/maintenance/ops-review?id=' . $req['id']); ?>" class="btn-icon btn-primary-icon" title="Ops Review">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M9 11l3 3L22 4"></path>
                                                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                                             </svg>
                                         </a>
-                                    <?php elseif ($status === 'finance_review' && in_array($userRole, ['admin', 'finance_manager', 'director'], true)): ?>
+                                    <?php elseif ($status === 'finance_review' && $canApproveFinance): ?>
                                         <a href="<?= base_url('staff/dashboard/maintenance/finance-review?id=' . $req['id']); ?>" class="btn-icon btn-primary-icon" title="Finance Review">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <line x1="12" y1="1" x2="12" y2="23"></line>
                                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                                             </svg>
                                         </a>
-                                    <?php elseif ($status === 'approved' && in_array($userRole, ['admin', 'operation_manager', 'finance_manager', 'director'], true)): ?>
+                                    <?php elseif ($status === 'approved' && $canAssignSuppliers): ?>
                                         <a href="<?= base_url('staff/dashboard/maintenance/assign-supplier?id=' . $req['id']); ?>" class="btn-icon btn-primary-icon" title="Assign Supplier">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -271,7 +292,7 @@ ob_start();
                                                 <line x1="23" y1="11" x2="17" y2="11"></line>
                                             </svg>
                                         </a>
-                                    <?php elseif ($status === 'completed' && in_array($userRole, ['admin', 'operation_manager', 'director'], true)): ?>
+                                    <?php elseif ($status === 'completed' && $canVerifyOps): ?>
                                         <a href="<?= base_url('staff/dashboard/maintenance/verify-work?id=' . $req['id']); ?>" class="btn-icon btn-primary-icon" title="Verify Work">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <polyline points="20 6 9 17 4 12"></polyline>

@@ -1,9 +1,12 @@
 <?php
 
 use App\Modules\Admin\Controllers\SettingsController;
+use App\Modules\AuditLogs\Controllers\AuditLogsController;
 use App\Modules\Auth\Controllers\LoginController;
+use App\Modules\Backups\Controllers\BackupController;
 use App\Modules\CashBanking\Controllers\CashBankingController;
 use App\Modules\Dashboard\Controllers\DashboardController;
+use App\Modules\Housekeeping\Controllers\HousekeepingController;
 use App\Modules\Inventory\Controllers\InventoryController;
 use App\Modules\PMS\Controllers\BookingController;
 use App\Modules\POS\Controllers\POSController;
@@ -19,6 +22,7 @@ use App\Modules\SysAdmin\Controllers\SysAdminController;
 use App\Modules\Website\Controllers\GuestController;
 use App\Modules\Website\Controllers\GuestPortalController;
 use App\Modules\Website\Controllers\OrderController;
+use App\Modules\Suppliers\Controllers\SupplierPortalController;
 
 return [
     // Guest Website (main public website - root path)
@@ -27,19 +31,69 @@ return [
     ['GET', '/drinks-food', [GuestController::class, 'food']],
     ['GET', '/about', [GuestController::class, 'about']],
     ['GET', '/contact', [GuestController::class, 'contact']],
+    ['GET', '/conferencing', [GuestController::class, 'conferencing']],
+    ['GET', '/events', [GuestController::class, 'events']],
+    ['GET', '/gallery', [GuestController::class, 'gallery']],
+    // Gallery Management (Admin)
+    ['GET', '/staff/dashboard/gallery', [\App\Modules\Website\Controllers\GalleryController::class, 'index']],
+    ['GET', '/staff/dashboard/gallery/create', [\App\Modules\Website\Controllers\GalleryController::class, 'create']],
+    ['POST', '/staff/dashboard/gallery/store', [\App\Modules\Website\Controllers\GalleryController::class, 'store']],
+    ['GET', '/staff/dashboard/gallery/edit', [\App\Modules\Website\Controllers\GalleryController::class, 'edit']],
+    ['POST', '/staff/dashboard/gallery/update', [\App\Modules\Website\Controllers\GalleryController::class, 'update']],
+    ['POST', '/staff/dashboard/gallery/delete', [\App\Modules\Website\Controllers\GalleryController::class, 'delete']],
     ['GET', '/order', [OrderController::class, 'show']],
     ['GET', '/order/cart', [OrderController::class, 'cart']],
     ['POST', '/order/cart', [OrderController::class, 'cart']],
     ['GET', '/order/availability', [OrderController::class, 'availability']],
     ['POST', '/order/checkout', [OrderController::class, 'checkout']],
+    ['GET', '/order/payment-waiting', [OrderController::class, 'paymentWaiting']],
+    ['GET', '/order/check-payment-status', [OrderController::class, 'checkPaymentStatus']],
+    ['POST', '/order/confirm-payment', [OrderController::class, 'confirmPayment']],
     ['GET', '/booking', [BookingController::class, 'publicForm']],
     ['POST', '/booking/check', [BookingController::class, 'checkAvailability']],
     ['POST', '/booking', [BookingController::class, 'store']],
     ['GET', '/booking/confirmation', [BookingController::class, 'confirmation']],
+    ['GET', '/api/booking/payment-status', [BookingController::class, 'checkPaymentStatus']],
     ['GET', '/guest/login', [GuestPortalController::class, 'showLogin']],
     ['POST', '/guest/login', [GuestPortalController::class, 'authenticate']],
+    ['POST', '/guest/login/request-code', [GuestPortalController::class, 'requestCode']],
+    ['GET', '/guest/logout', [GuestPortalController::class, 'logout']],
     ['POST', '/guest/logout', [GuestPortalController::class, 'logout']],
+    ['GET', '/guest/setup-password', [GuestPortalController::class, 'showSetupPassword']],
+    ['POST', '/guest/setup-password', [GuestPortalController::class, 'setupPassword']],
+    ['GET', '/guest/forgot-password', [GuestPortalController::class, 'showForgotPassword']],
+    ['POST', '/guest/forgot-password', [GuestPortalController::class, 'requestPasswordReset']],
+    ['GET', '/guest/reset-password', [GuestPortalController::class, 'showResetPassword']],
+    ['POST', '/guest/reset-password', [GuestPortalController::class, 'resetPassword']],
     ['GET', '/guest/portal', [GuestPortalController::class, 'dashboard']],
+    ['GET', '/guest/upcoming-bookings', [GuestPortalController::class, 'upcomingBookings']],
+    ['GET', '/guest/past-bookings', [GuestPortalController::class, 'pastBookings']],
+    ['GET', '/guest/active-orders', [GuestPortalController::class, 'activeOrders']],
+    ['GET', '/guest/booking', [GuestPortalController::class, 'booking']],
+    ['POST', '/guest/booking/pay', [GuestPortalController::class, 'payBooking']],
+    ['GET', '/guest/orders', [GuestPortalController::class, 'orders']],
+    ['GET', '/guest/room-services', [GuestPortalController::class, 'roomServices']],
+    ['POST', '/guest/request-service', [GuestPortalController::class, 'requestService']],
+    ['POST', '/guest/toggle-dnd', [GuestPortalController::class, 'toggleDND']],
+    ['GET', '/guest/order', [GuestPortalController::class, 'order']],
+    ['GET', '/guest/order/pay', [GuestPortalController::class, 'payOrder']],
+    ['POST', '/guest/order/change-payment', [GuestPortalController::class, 'changePaymentMethod']],
+    ['GET', '/guest/profile', [GuestPortalController::class, 'profile']],
+    ['GET', '/guest/folios', [GuestPortalController::class, 'folios']],
+    ['GET', '/guest/notifications', [GuestPortalController::class, 'notifications']],
+    ['GET', '/guest/reviews', [GuestPortalController::class, 'reviews']],
+    ['POST', '/guest/reviews/create', [GuestPortalController::class, 'createReview']],
+    ['GET', '/guest/contact', [GuestPortalController::class, 'contact']],
+    ['POST', '/guest/contact', [GuestPortalController::class, 'submitContact']],
+    
+    // Supplier Portal
+    ['GET', '/supplier/login', [SupplierPortalController::class, 'showLogin']],
+    ['POST', '/supplier/login', [SupplierPortalController::class, 'authenticate']],
+    ['POST', '/supplier/login/request-code', [SupplierPortalController::class, 'requestCode']],
+    ['POST', '/supplier/logout', [SupplierPortalController::class, 'logout']],
+    ['GET', '/supplier/portal', [SupplierPortalController::class, 'dashboard']],
+    ['GET', '/supplier/purchase-orders', [SupplierPortalController::class, 'purchaseOrders']],
+    ['GET', '/supplier/purchase-order', [SupplierPortalController::class, 'showPurchaseOrder']],
     
     // Business information pages
     ['GET', '/features', [FeaturesController::class, 'index']],
@@ -54,16 +108,23 @@ return [
 
     // Staff dashboards (all under /staff/dashboard)
     ['GET', '/staff/dashboard', [DashboardController::class, 'index']],
-    ['GET', '/staff/dashboard/bookings', [BookingController::class, 'staffIndex']],
+	['GET', '/staff/dashboard/bookings', [BookingController::class, 'staffIndex']],
+	['GET', '/staff/dashboard/guests', [BookingController::class, 'guests']],
+	['GET', '/staff/dashboard/invoices', [BookingController::class, 'invoices']],
     ['GET', '/staff/dashboard/bookings/calendar-view', [BookingController::class, 'calendarView']],
     ['GET', '/staff/dashboard/bookings/calendar', [BookingController::class, 'calendar']],
     ['POST', '/staff/dashboard/bookings/check-in', [BookingController::class, 'checkIn']],
     ['POST', '/staff/dashboard/bookings/check-out', [BookingController::class, 'checkOut']],
+    ['POST', '/staff/dashboard/bookings/cancel', [BookingController::class, 'cancel']],
     ['GET', '/staff/dashboard/bookings/folio', [BookingController::class, 'folio']],
     ['POST', '/staff/dashboard/bookings/folio-entry', [BookingController::class, 'addFolioEntry']],
     ['POST', '/staff/dashboard/bookings/folio-mpesa-payment', [BookingController::class, 'folioMpesaPayment']],
     ['POST', '/staff/dashboard/bookings/folio-confirm-payment', [BookingController::class, 'confirmFolioPayment']],
     ['GET', '/staff/dashboard/bookings/folio-query-payment', [BookingController::class, 'queryFolioPaymentStatus']],
+    
+    // Folio Management (Centralized)
+    ['GET', '/staff/dashboard/folios', [\App\Modules\PMS\Controllers\FolioController::class, 'index']],
+    ['GET', '/staff/dashboard/folios/view', [\App\Modules\PMS\Controllers\FolioController::class, 'show']],
     ['POST', '/staff/dashboard/bookings/assign-room', [BookingController::class, 'assignRoom']],
     ['GET', '/staff/dashboard/bookings/edit', [BookingController::class, 'edit']],
     ['POST', '/staff/dashboard/bookings/update', [BookingController::class, 'update']],
@@ -72,6 +133,16 @@ return [
     ['GET', '/staff/dashboard/rooms/select-edit', [\App\Modules\PMS\Controllers\RoomsController::class, 'selectEdit']],
     ['GET', '/staff/dashboard/rooms/edit', [\App\Modules\PMS\Controllers\RoomsController::class, 'editRoom']],
     ['POST', '/staff/dashboard/rooms/update', [\App\Modules\PMS\Controllers\RoomsController::class, 'updateRoom']],
+    
+    // Housekeeping routes
+    ['GET', '/staff/dashboard/housekeeping', [\App\Modules\Housekeeping\Controllers\HousekeepingController::class, 'index']],
+    ['POST', '/staff/dashboard/housekeeping/update-room-status', [\App\Modules\Housekeeping\Controllers\HousekeepingController::class, 'updateRoomStatus']],
+    ['POST', '/staff/dashboard/housekeeping/create-task', [\App\Modules\Housekeeping\Controllers\HousekeepingController::class, 'createTask']],
+    ['POST', '/staff/dashboard/housekeeping/update-task', [\App\Modules\Housekeeping\Controllers\HousekeepingController::class, 'updateTask']],
+    ['POST', '/staff/dashboard/housekeeping/report-maintenance', [\App\Modules\Housekeeping\Controllers\HousekeepingController::class, 'reportMaintenance']],
+    ['POST', '/staff/dashboard/housekeeping/set-dnd', [\App\Modules\Housekeeping\Controllers\HousekeepingController::class, 'setDND']],
+    ['POST', '/staff/dashboard/housekeeping/update-guest-request', [\App\Modules\Housekeeping\Controllers\HousekeepingController::class, 'updateGuestRequest']],
+    ['GET', '/staff/dashboard/housekeeping/room', [\App\Modules\Housekeeping\Controllers\HousekeepingController::class, 'viewRoom']],
     ['GET', '/staff/dashboard/rooms/types', [\App\Modules\PMS\Controllers\RoomsController::class, 'roomTypes']],
     ['GET', '/staff/dashboard/rooms/create-type', [\App\Modules\PMS\Controllers\RoomsController::class, 'createRoomType']],
     ['POST', '/staff/dashboard/rooms/create-type', [\App\Modules\PMS\Controllers\RoomsController::class, 'createRoomType']],
@@ -93,8 +164,26 @@ return [
     ['POST', '/staff/dashboard/cash-banking/approve-reconciliation', [CashBankingController::class, 'approveReconciliation']],
     ['POST', '/staff/dashboard/cash-banking/mark-banked', [CashBankingController::class, 'markBanked']],
     ['GET', '/staff/dashboard/orders', [\App\Modules\Orders\Controllers\OrdersController::class, 'index']],
+    ['GET', '/staff/dashboard/orders/my', [\App\Modules\Orders\Controllers\OrdersController::class, 'my']],
+    ['GET', '/staff/dashboard/orders/updates', [\App\Modules\Orders\Controllers\OrdersController::class, 'updates']],
     ['GET', '/staff/dashboard/orders/show', [\App\Modules\Orders\Controllers\OrdersController::class, 'show']],
+    ['POST', '/staff/dashboard/orders/update-status', [\App\Modules\Orders\Controllers\OrdersController::class, 'updateStatus']],
+    ['POST', '/staff/dashboard/orders/assign-staff', [\App\Modules\Orders\Controllers\OrdersController::class, 'assignStaff']],
+    ['POST', '/staff/dashboard/orders/add-comment', [\App\Modules\Orders\Controllers\OrdersController::class, 'addComment']],
+    ['POST', '/staff/dashboard/orders/cancel', [\App\Modules\Orders\Controllers\OrdersController::class, 'cancel']],
+    ['POST', '/staff/dashboard/orders/confirm-payment', [\App\Modules\Orders\Controllers\OrdersController::class, 'confirmPayment']],
+    ['POST', '/staff/dashboard/orders/request-payment', [\App\Modules\Orders\Controllers\OrdersController::class, 'requestPayment']],
+    ['GET', '/staff/dashboard/orders/poll', [\App\Modules\Orders\Controllers\OrdersController::class, 'poll']],
+    
+    // Kitchen Order Tickets (KOT)
+    ['GET', '/staff/dashboard/kot', [\App\Modules\Kitchen\Controllers\KOTController::class, 'index']],
+    ['GET', '/staff/dashboard/kot/status', [\App\Modules\Kitchen\Controllers\KOTController::class, 'status']],
+    ['POST', '/staff/dashboard/kot/update-status', [\App\Modules\Kitchen\Controllers\KOTController::class, 'updateStatus']],
+    
 	['GET', '/staff/dashboard/staff', [StaffController::class, 'index']],
+	['GET', '/staff/dashboard/staff/create', [StaffController::class, 'create']],
+	['POST', '/staff/dashboard/staff/store', [StaffController::class, 'store']],
+	['GET', '/staff/dashboard/staff/profile', [StaffController::class, 'profile']],
 	['GET', '/staff/dashboard/staff/edit', [StaffController::class, 'edit']],
 	['POST', '/staff/dashboard/staff/update', [StaffController::class, 'update']],
 	// Attendance
@@ -102,6 +191,7 @@ return [
 	['POST', '/staff/dashboard/attendance/check-in', [\App\Modules\Attendance\Controllers\AttendanceController::class, 'checkIn']],
 	['POST', '/staff/dashboard/attendance/check-out', [\App\Modules\Attendance\Controllers\AttendanceController::class, 'checkOut']],
 	['POST', '/staff/dashboard/attendance/grant-override', [\App\Modules\Attendance\Controllers\AttendanceController::class, 'grantOverride']],
+	['POST', '/staff/dashboard/attendance/ignore-anomaly', [\App\Modules\Attendance\Controllers\AttendanceController::class, 'ignoreAnomaly']],
 	['GET', '/staff/dashboard/attendance/my-attendance', [\App\Modules\Attendance\Controllers\AttendanceController::class, 'myAttendance']],
     ['GET', '/staff/dashboard/roles', [RolesController::class, 'index']],
     ['GET', '/staff/dashboard/roles/edit', [RolesController::class, 'editRole']],
@@ -113,6 +203,7 @@ return [
 	['GET', '/staff/dashboard/tasks/staff-by-department', [TaskController::class, 'getStaffByDepartment']],
 	// Reports
 	['GET', '/staff/dashboard/reports/sales', [SalesReportController::class, 'index']],
+	['GET', '/staff/dashboard/reports/daily-sales', [SalesReportController::class, 'dailySales']],
 	['GET', '/staff/dashboard/reports/finance', [\App\Modules\Reports\Controllers\FinanceReportController::class, 'index']],
 	['GET', '/staff/dashboard/reports/operations', [\App\Modules\Reports\Controllers\OperationsReportController::class, 'index']],
 	// Maintenance
@@ -209,6 +300,7 @@ return [
 	['POST', '/staff/dashboard/inventory/requisitions/complete', [InventoryController::class, 'completeRequisition']],
 	['POST', '/staff/dashboard/inventory/requisitions/ops-verify', [InventoryController::class, 'verifyOpsRequisition']],
 	['POST', '/staff/dashboard/inventory/requisitions/finance-approve', [InventoryController::class, 'approveFinanceRequisition']],
+	['POST', '/staff/dashboard/inventory/requisitions/director-approve', [InventoryController::class, 'approveDirectorRequisition']],
 	['POST', '/staff/dashboard/inventory/requisitions/assign-supplier', [InventoryController::class, 'assignSupplierRequisition']],
 	['POST', '/staff/dashboard/inventory/requisitions/create-po', [InventoryController::class, 'createPOFromRequisition']],
     ['POST', '/staff/dashboard/inventory/purchase-orders/receive', [InventoryController::class, 'receivePurchaseOrder']],
@@ -219,6 +311,16 @@ return [
     ['POST', '/staff/dashboard/inventory/item/store', [InventoryController::class, 'storeItem']],
     ['POST', '/staff/dashboard/inventory/item/update', [InventoryController::class, 'updateItem']],
     ['POST', '/staff/dashboard/inventory/item/delete', [InventoryController::class, 'deleteItem']],
+    // Inventory Category Management
+    ['POST', '/staff/dashboard/inventory/category/create', [InventoryController::class, 'createCategory']],
+    
+    // POS Item Management
+    ['GET', '/staff/dashboard/pos/items', [POSController::class, 'items']],
+    ['GET', '/staff/dashboard/pos/items/create', [POSController::class, 'createItem']],
+    ['POST', '/staff/dashboard/pos/items/store', [POSController::class, 'storeItem']],
+    ['GET', '/staff/dashboard/pos/items/edit', [POSController::class, 'editItem']],
+    ['POST', '/staff/dashboard/pos/items/update', [POSController::class, 'updateItem']],
+    ['POST', '/staff/dashboard/pos/items/delete', [POSController::class, 'deleteItem']],
     // Payment Gateway
     ['GET', '/staff/dashboard/payment-gateway', [\App\Modules\PaymentGateway\Controllers\PaymentGatewayController::class, 'index']],
     ['POST', '/staff/dashboard/payment-gateway/update', [\App\Modules\PaymentGateway\Controllers\PaymentGatewayController::class, 'update']],
@@ -231,14 +333,48 @@ return [
     ['GET', '/staff/admin/settings', [SettingsController::class, 'index']],
     ['POST', '/staff/admin/settings', [SettingsController::class, 'update']],
     ['POST', '/staff/admin/settings/upload-image', [SettingsController::class, 'uploadImage']],
+    
+    // Backup Management
+    ['GET', '/staff/dashboard/backups', [BackupController::class, 'index']],
+    ['POST', '/staff/dashboard/backups/create', [BackupController::class, 'create']],
+    ['GET', '/staff/dashboard/backups/download', [BackupController::class, 'download']],
+    ['POST', '/staff/dashboard/backups/delete', [BackupController::class, 'delete']],
+    
+    // Audit Logs
+    ['GET', '/staff/dashboard/audit-logs', [AuditLogsController::class, 'index']],
 
     // License Management
     ['GET', '/staff/dashboard/license', [\App\Modules\License\Controllers\LicenseController::class, 'index']],
     ['POST', '/staff/dashboard/license/activate', [\App\Modules\License\Controllers\LicenseController::class, 'activate']],
+    ['POST', '/staff/dashboard/license/fetch', [\App\Modules\License\Controllers\LicenseController::class, 'fetchLicense']],
+    ['GET', '/staff/dashboard/license/manage', [\App\Modules\License\Controllers\LicenseController::class, 'manage']],
+    ['POST', '/staff/dashboard/license/upgrade', [\App\Modules\License\Controllers\LicenseController::class, 'upgrade']],
     
     // Sys admin console
+    ['GET', '/sysadmin', function() {
+        header('Location: ' . base_url('sysadmin/login'));
+        exit;
+    }],
     ['GET', '/sysadmin/login', [SysAdminController::class, 'login']],
     ['POST', '/sysadmin/login', [SysAdminController::class, 'login']],
     ['GET', '/sysadmin/logout', [SysAdminController::class, 'logout']],
     ['GET', '/sysadmin/dashboard', [SysAdminController::class, 'dashboard']],
+    ['GET', '/sysadmin/tenants', [SysAdminController::class, 'tenants']],
+    ['GET', '/sysadmin/tenants/view', [SysAdminController::class, 'viewTenant']],
+    ['GET', '/sysadmin/licenses', [SysAdminController::class, 'licenses']],
+    ['GET', '/sysadmin/licenses/view', [SysAdminController::class, 'viewLicense']],
+    ['POST', '/sysadmin/licenses/upgrade', [SysAdminController::class, 'upgradeLicense']],
+    ['POST', '/sysadmin/licenses/revoke', [SysAdminController::class, 'revokeLicense']],
+    ['POST', '/sysadmin/licenses/generate', [SysAdminController::class, 'generateLicense']],
+    ['POST', '/sysadmin/licenses/send', [SysAdminController::class, 'sendLicense']],
+    ['GET', '/sysadmin/packages/assign', [SysAdminController::class, 'assignPackage']],
+    ['POST', '/sysadmin/packages/assign', [SysAdminController::class, 'assignPackage']],
+    ['GET', '/sysadmin/logs', [SysAdminController::class, 'logs']],
+    ['GET', '/sysadmin/health', [SysAdminController::class, 'health']],
+    ['GET', '/sysadmin/analytics', [SysAdminController::class, 'analytics']],
+    ['GET', '/sysadmin/settings', [SysAdminController::class, 'settings']],
+    ['POST', '/sysadmin/settings', [SysAdminController::class, 'settings']],
+    ['POST', '/sysadmin/settings/setup-2fa', [SysAdminController::class, 'setup2FA']],
+    ['GET', '/sysadmin/packages', [SysAdminController::class, 'packages']],
+    ['POST', '/sysadmin/packages', [SysAdminController::class, 'packages']],
 ];

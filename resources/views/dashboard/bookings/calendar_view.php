@@ -61,7 +61,7 @@ ob_start();
                                 <select name="room_id">
                                     <?php foreach ($availableRooms as $room): ?>
                                         <option value="<?= (int)$room['id']; ?>">
-                                            <?= htmlspecialchars($room['display_name'] ?? $room['room_number']); ?> (<?= htmlspecialchars($room['room_type_name']); ?>)
+                                            <?= htmlspecialchars($room['display_name'] ?? $room['room_number']); ?> (<?= htmlspecialchars($room['room_type_name'] ?? 'Room Type'); ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 </select>

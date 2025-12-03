@@ -8,6 +8,13 @@ ob_start();
             <h2>Staff Management</h2>
             <p class="staff-subtitle">View and manage your team members</p>
         </div>
+        <a href="<?= base_url('staff/dashboard/staff/create'); ?>" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add New Staff
+        </a>
     </header>
 
     <div class="staff-filters">
@@ -43,6 +50,17 @@ ob_start();
             </div>
         </form>
     </div>
+
+    <?php if (!empty($_GET['error'])): ?>
+        <div class="alert danger" style="padding: 1rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1.5rem; background: #fee2e2; border: 1px solid #fecaca; color: #991b1b;">
+            <?= htmlspecialchars($_GET['error']); ?>
+        </div>
+    <?php endif; ?>
+    <?php if (!empty($_GET['success'])): ?>
+        <div class="alert success" style="padding: 1rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1.5rem; background: #dcfce7; border: 1px solid #bbf7d0; color: #166534;">
+            <?= htmlspecialchars($_GET['success']); ?>
+        </div>
+    <?php endif; ?>
 
     <?php if (empty($users)): ?>
         <div class="empty-state">
@@ -87,11 +105,39 @@ ob_start();
                                 <div class="staff-info-cell">
                                     <div class="staff-name"><?= htmlspecialchars($user['name']); ?></div>
                                     <div class="staff-email"><?= htmlspecialchars($user['email']); ?></div>
+                                    <?php if (!empty($user['username'])): ?>
+                                        <div class="staff-username" style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">Username: <strong><?= htmlspecialchars($user['username']); ?></strong></div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <span class="role-badge"><?= htmlspecialchars($user['role_name'] ?? $user['role_key']); ?></span>
+                            <?php
+                            // Get all roles for this user
+                            $userRepository = new \App\Repositories\UserRepository();
+                            $userRoles = $userRepository->getUserRoles((int)$user['id']);
+                            
+                            if (count($userRoles) > 1): 
+                                // Multiple roles - show all with primary badge
+                                $primaryRole = $userRepository->getPrimaryRole((int)$user['id']);
+                            ?>
+                                <div class="roles-badge-group" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                    <?php foreach ($userRoles as $role): ?>
+                                        <span class="role-badge <?= $role['role_key'] === $primaryRole ? 'role-badge-primary' : ''; ?>" 
+                                              title="<?= $role['role_key'] === $primaryRole ? 'Primary Role' : 'Additional Role'; ?>">
+                                            <?= htmlspecialchars($role['role_name'] ?? $role['role_key']); ?>
+                                            <?php if ($role['role_key'] === $primaryRole): ?>
+                                                <span style="font-size: 0.7em; opacity: 0.8;">(Primary)</span>
+                                            <?php endif; ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: 
+                                // Single role
+                                $roleName = $user['role_name'] ?? $user['role_key'] ?? 'Unknown';
+                            ?>
+                                <span class="role-badge"><?= htmlspecialchars($roleName); ?></span>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <?php if ($user['status'] === 'active'): ?>
@@ -121,17 +167,45 @@ ob_start();
                             <span class="member-since"><?= date('M j, Y', strtotime($user['created_at'])); ?></span>
                         </td>
                         <?php
-                        $userRole = (\App\Support\Auth::user()['role_key'] ?? (\App\Support\Auth::user()['role'] ?? ''));
-                        if (in_array($userRole, ['admin'])):
+                        $currentUser = \App\Support\Auth::user();
+                        $userRoles = $currentUser['role_keys'] ?? [];
+                        if (empty($userRoles) && isset($currentUser['role_key'])) {
+                            $userRoles = [$currentUser['role_key']];
+                        }
+                        $canEdit = in_array('director', $userRoles, true) || in_array('operation_manager', $userRoles, true) || in_array('admin', $userRoles, true);
+                        if ($canEdit):
                         ?>
                             <td>
-                                <a href="<?= base_url('staff/dashboard/staff/edit?id=' . (int)$user['id']); ?>" class="task-action-link">
+                                <div class="action-buttons" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                <a href="<?= base_url('staff/dashboard/staff/profile?id=' . (int)$user['id']); ?>" class="task-action-link" title="View Profile">
+                                    View
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                </a>
+                                <?php if (in_array('director', $userRoles, true)): ?>
+                                <a href="<?= base_url('staff/dashboard/staff/edit?id=' . (int)$user['id']); ?>" class="task-action-link" title="Edit User">
                                     Edit
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                     </svg>
                                 </a>
+                                <?php endif; ?>
+                                    <form method="post" action="<?= base_url('staff/dashboard/attendance/grant-override'); ?>" style="display: inline;" onsubmit="return confirm('Grant 1-hour temporary login access to <?= htmlspecialchars($user['name']); ?>?');">
+                                        <input type="hidden" name="user_id" value="<?= (int)$user['id']; ?>">
+                                        <input type="hidden" name="reason" value="Granted by admin from Staff Management">
+                                        <input type="hidden" name="redirect" value="<?= base_url('staff/dashboard/staff'); ?>">
+                                        <button type="submit" class="task-action-link" style="background: none; border: none; padding: 0; cursor: pointer; color: var(--primary); text-decoration: none; font-size: inherit; display: inline-flex; align-items: center; gap: 0.25rem;">
+                                            Grant Login
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M9 11l3 3L22 4"></path>
+                                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         <?php endif; ?>
                     </tr>
@@ -323,6 +397,19 @@ ob_start();
     color: var(--primary);
     font-weight: 600;
     font-size: 0.875rem;
+}
+
+.role-badge-primary {
+    background: rgba(138, 106, 63, 0.2);
+    border: 1px solid var(--primary);
+    font-weight: 700;
+}
+
+.roles-badge-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
 }
 
 .status-badge {

@@ -6,6 +6,7 @@ class InventoryPermission
 {
     // Capability map by role_key
     protected static array $capabilities = [
+        'director' => ['*'], // Director has full access to everything
         'admin' => [
             'inventory.view',
             'inventory.edit_item',
@@ -57,12 +58,29 @@ class InventoryPermission
 
     public static function can(string $action, ?string $roleKey = null): bool
     {
-        $role = $roleKey ?? (Auth::user()['role_key'] ?? Auth::user()['role'] ?? null);
-        if (!$role) {
-            return false;
+        // If specific role provided, check that role only
+        if ($roleKey) {
+            $allowed = self::$capabilities[$roleKey] ?? [];
+            return in_array($action, $allowed, true) || in_array('*', $allowed, true);
         }
-        $allowed = self::$capabilities[$role] ?? [];
-        return in_array($action, $allowed, true) || in_array('*', $allowed, true);
+        
+        // Check all user roles - user has permission if ANY role has it
+        $user = Auth::user();
+        $roleKeys = $user['role_keys'] ?? [];
+        
+        // Fallback to single role_key for backward compatibility
+        if (empty($roleKeys) && isset($user['role_key'])) {
+            $roleKeys = [$user['role_key']];
+        }
+        
+        foreach ($roleKeys as $role) {
+            $allowed = self::$capabilities[$role] ?? [];
+            if (in_array($action, $allowed, true) || in_array('*', $allowed, true)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     public static function require(string $action, ?string $roleKey = null): void

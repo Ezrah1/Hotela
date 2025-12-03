@@ -27,13 +27,45 @@ class MaintenanceController extends Controller
 
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'director', 'ground', 'finance_manager']);
+        // Allow all authenticated users to view maintenance requests
+        Auth::requireRoles([]);
 
         $status = $request->input('status');
         $roomId = $request->input('room_id') ? (int)$request->input('room_id') : null;
         $assignedTo = $request->input('assigned_to') ? (int)$request->input('assigned_to') : null;
+        $filter = $request->input('filter', 'department'); // 'department', 'mine', 'all'
+
+        $user = Auth::user();
+        $userRole = $user['role_key'] ?? '';
+        $userId = (int)($user['id'] ?? 0);
+        $canViewAll = \App\Support\DepartmentHelper::canViewAllDepartments($userRole);
 
         $requests = $this->maintenance->all($status, $roomId, $assignedTo, 200);
+        
+        // Apply department filtering
+        if ($filter === 'mine' && !$canViewAll) {
+            // Show only user's own requests
+            $requests = array_filter($requests, function($req) use ($userId) {
+                return ($req['requested_by'] ?? null) == $userId;
+            });
+        } elseif ($filter === 'department' && !$canViewAll) {
+            // Show department requests
+            $userDepartment = \App\Support\DepartmentHelper::getDepartmentFromRole($userRole);
+            if ($userDepartment) {
+                $departmentRoleKeys = \App\Support\DepartmentHelper::getRolesForDepartment($userDepartment);
+                $requests = array_filter($requests, function($req) use ($departmentRoleKeys) {
+                    $requesterRole = $req['requester_role_key'] ?? null;
+                    return in_array($requesterRole, $departmentRoleKeys, true);
+                });
+            } else {
+                // Fallback: show only user's own
+                $requests = array_filter($requests, function($req) use ($userId) {
+                    return ($req['requested_by'] ?? null) == $userId;
+                });
+            }
+        }
+        // If canViewAll or filter === 'all', show all requests (no filtering)
+
         $statistics = $this->maintenance->getStatistics();
         $allRooms = $this->rooms->all();
         $allStaff = $this->users->all(null, 'active', null);
@@ -43,23 +75,28 @@ class MaintenanceController extends Controller
             'statistics' => $statistics,
             'allRooms' => $allRooms,
             'allStaff' => $allStaff,
+            'userRole' => $userRole,
+            'canViewAll' => $canViewAll,
             'filters' => [
                 'status' => $status,
                 'room_id' => $roomId,
                 'assigned_to' => $assignedTo,
+                'filter' => $filter,
             ],
         ]);
     }
 
     public function create(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'director', 'ground', 'housekeeping', 'receptionist']);
+        // Allow all authenticated users to create maintenance requests
+        Auth::requireRoles([]);
 
         if ($request->method() === 'POST') {
             $user = Auth::user();
 
             $title = trim($request->input('title', ''));
             $description = trim($request->input('description', ''));
+            $roomId = $request->input('room_id') ? (int)$request->input('room_id') : null;
 
             if (empty($title)) {
                 header('Location: ' . base_url('staff/dashboard/maintenance/create?error=Title%20is%20required'));
@@ -68,6 +105,20 @@ class MaintenanceController extends Controller
 
             if (empty($description)) {
                 header('Location: ' . base_url('staff/dashboard/maintenance/create?error=Description%20is%20required'));
+                return;
+            }
+
+            // Check for duplicate maintenance requests in the same department
+            $duplicate = $this->maintenance->findDuplicate(
+                (int)(Auth::user()['id'] ?? 0),
+                $title,
+                $description,
+                $roomId
+            );
+            if ($duplicate) {
+                $duplicateId = (int)$duplicate['id'];
+                $duplicateRef = htmlspecialchars($duplicate['reference'] ?? 'N/A');
+                header('Location: ' . base_url('staff/dashboard/maintenance/create?error=' . urlencode("A similar maintenance request already exists in your department (Reference: {$duplicateRef}). Please add comments to the existing request instead.")) . '&duplicate_id=' . $duplicateId);
                 return;
             }
 
@@ -97,7 +148,7 @@ class MaintenanceController extends Controller
             }
 
             $data = [
-                'room_id' => $request->input('room_id') ? (int)$request->input('room_id') : null,
+                'room_id' => $roomId,
                 'title' => $title,
                 'description' => $description,
                 'priority' => $request->input('priority', 'medium'),
@@ -109,7 +160,27 @@ class MaintenanceController extends Controller
             ];
 
             try {
-                $this->maintenance->create($data);
+                $requestId = $this->maintenance->create($data);
+                
+                // Notify department members about new maintenance request
+                $userRole = $user['role_key'] ?? '';
+                $userDepartment = \App\Support\DepartmentHelper::getDepartmentFromRole($userRole);
+                if ($userDepartment) {
+                    $departmentRoleKeys = \App\Support\DepartmentHelper::getRolesForDepartment($userDepartment);
+                    $notificationService = new \App\Services\Notifications\NotificationService();
+                    $requestData = $this->maintenance->find($requestId);
+                    $reference = $requestData['reference'] ?? 'N/A';
+                    
+                    // Notify all department members
+                    foreach ($departmentRoleKeys as $roleKey) {
+                        $notificationService->notifyRole($roleKey, 'New Department Maintenance Request', 
+                            sprintf('A new maintenance request %s has been created in your department (%s priority).', 
+                                $reference, ucfirst($data['priority'])),
+                            ['request_id' => $requestId, 'reference' => $reference]
+                        );
+                    }
+                }
+                
                 header('Location: ' . base_url('staff/dashboard/maintenance?success=Maintenance%20request%20created'));
             } catch (\Exception $e) {
                 header('Location: ' . base_url('staff/dashboard/maintenance/create?error=' . urlencode($e->getMessage())));
@@ -377,7 +448,13 @@ class MaintenanceController extends Controller
             return;
         }
 
+        // Filter suppliers to only show service providers (or both) for maintenance
         $allSuppliers = $this->suppliers->all();
+        $serviceProviders = array_filter($allSuppliers, function($s) {
+            return in_array($s['category'] ?? 'product_supplier', ['service_provider', 'both']) 
+                && in_array($s['status'] ?? 'active', ['active']);
+        });
+        
         $recommendedSupplierIds = [];
         if (!empty($requestData['recommended_suppliers'])) {
             $recommendedSupplierIds = array_map('intval', explode(',', $requestData['recommended_suppliers']));
@@ -385,7 +462,7 @@ class MaintenanceController extends Controller
 
         $this->view('dashboard/maintenance/assign-supplier', [
             'request' => $requestData,
-            'allSuppliers' => $allSuppliers,
+            'allSuppliers' => $serviceProviders,
             'recommendedSupplierIds' => $recommendedSupplierIds,
         ]);
     }

@@ -46,8 +46,8 @@ class BookingController extends Controller
     public function publicForm(Request $request): void
     {
         $guest = GuestPortal::user();
-        $start = $request->input('check_in', date('Y-m-d', strtotime('+1 day')));
-        $end = $request->input('check_out', date('Y-m-d', strtotime('+2 days')));
+        $start = $request->input('check_in', date('Y-m-d'));
+        $end = $request->input('check_out', date('Y-m-d', strtotime('+1 day')));
         $results = $this->availability->search($start, $end);
 
         $this->view('website/booking/form', [
@@ -98,12 +98,13 @@ class BookingController extends Controller
                 return;
             }
 
-            if ($end <= $start) {
+            if ($end < $start) {
                 http_response_code(422);
-                echo 'Check-out must be after check-in.';
+                echo 'Check-out must be on or after check-in.';
                 return;
             }
 
+            // For same-day bookings, calculate as 1 night minimum
             $nights = max(1, $start->diff($end)->days);
             $website = settings('website', []);
             $promo = (float)($website['promo_discount'] ?? 0);
@@ -175,6 +176,11 @@ class BookingController extends Controller
                 return;
             }
 
+            // Determine booking status based on payment status
+            // Only confirm booking if payment is successful (paid)
+            // For pending/unpaid payments, booking remains pending until payment is confirmed
+            $bookingStatus = ($paymentStatus === 'paid') ? 'confirmed' : 'pending';
+
             $reservationId = $this->reservations->create([
                 'reference' => $reference,
                 'guest_name' => $guestName,
@@ -188,7 +194,7 @@ class BookingController extends Controller
                 'room_id' => $roomId,
                 'extras' => $extras ? json_encode($extras) : null,
                 'source' => 'website',
-                'status' => 'pending',
+                'status' => $bookingStatus,
                 'total_amount' => $totalAmount,
                 'deposit_amount' => 0,
                 'payment_status' => $paymentStatus,
@@ -224,21 +230,33 @@ class BookingController extends Controller
                 'room_id' => $roomId,
                 'room_type_id' => $data['room_type_id'],
                 'guest_name' => $guestName,
+                'payment_status' => $paymentStatus,
             ];
             
-            // Notify housekeeping for room preparation
-            $this->notifications->notifyRole('housekeeping', 'New reservation', $message, $notificationPayload);
-            
-            // Notify receptionist for check-in preparation
-            $this->notifications->notifyRole('receptionist', 'New reservation', $message, $notificationPayload);
-            
-            // Notify operations manager for oversight
-            $this->notifications->notifyRole('operation_manager', 'New reservation', $message, $notificationPayload);
-            
-            // Notify admin for all bookings
-            $this->notifications->notifyRole('admin', 'New reservation', $message, $notificationPayload);
+            // If payment is pending, notify staff to follow up
+            if ($paymentStatus !== 'paid') {
+                $pendingMessage = sprintf(
+                    '⚠️ Payment Pending: %s booked from %s to %s. Payment status: %s. Please follow up to complete payment.',
+                    $guestName,
+                    $checkIn,
+                    $checkOut,
+                    ucfirst($paymentStatus)
+                );
+                
+                // Notify receptionist and finance manager for payment follow-up
+                $this->notifications->notifyRole('receptionist', 'Payment Pending - Follow Up Required', $pendingMessage, $notificationPayload);
+                $this->notifications->notifyRole('finance_manager', 'Payment Pending - Follow Up Required', $pendingMessage, $notificationPayload);
+                $this->notifications->notifyRole('cashier', 'Payment Pending - Follow Up Required', $pendingMessage, $notificationPayload);
+                $this->notifications->notifyRole('admin', 'Payment Pending - Follow Up Required', $pendingMessage, $notificationPayload);
+            } else {
+                // Payment completed - notify for room preparation
+                $this->notifications->notifyRole('housekeeping', 'New reservation', $message, $notificationPayload);
+                $this->notifications->notifyRole('receptionist', 'New reservation', $message, $notificationPayload);
+                $this->notifications->notifyRole('operation_manager', 'New reservation', $message, $notificationPayload);
+                $this->notifications->notifyRole('admin', 'New reservation', $message, $notificationPayload);
+            }
 
-            // Send booking confirmation email to guest
+            // Send appropriate email based on payment status
             if (!empty($guestEmail)) {
                 try {
                     $nights = max(1, $start->diff($end)->days);
@@ -253,10 +271,13 @@ class BookingController extends Controller
                         'total_amount' => $totalAmount,
                         'nightly_rate' => $nightlyRate,
                         'nights' => $nights,
-                        'status' => 'pending',
+                        'status' => $bookingStatus,
+                        'payment_status' => $paymentStatus,
+                        'payment_method' => $paymentMethod,
                         'room_type_name' => $roomType['name'] ?? 'Room Type',
                         'room_label' => $roomLabel,
                         'special_requests' => $specialRequests,
+                        'mpesa_phone' => $mpesaPhone,
                     ];
                     
                     $guestData = [
@@ -265,10 +286,16 @@ class BookingController extends Controller
                         'guest_phone' => $guestPhone,
                     ];
                     
-                    $this->email->sendBookingConfirmation($bookingData, $guestData);
+                    // Send confirmation email only if payment is paid
+                    // Send payment completion email if payment is pending
+                    if ($paymentStatus === 'paid') {
+                        $this->email->sendBookingConfirmation($bookingData, $guestData);
+                    } else {
+                        $this->email->sendPaymentCompletionEmail($bookingData, $guestData);
+                    }
                 } catch (\Exception $e) {
                     // Log error but don't fail the booking
-                    error_log('Failed to send booking confirmation email: ' . $e->getMessage());
+                    error_log('Failed to send booking email: ' . $e->getMessage());
                 }
             }
 
@@ -313,12 +340,13 @@ class BookingController extends Controller
             return;
         }
 
-        if ($end <= $start) {
+        if ($end < $start) {
             http_response_code(422);
-            echo json_encode(['error' => 'Check-out must be after check-in.']);
+            echo json_encode(['error' => 'Check-out must be on or after check-in.']);
             return;
         }
 
+        // For same-day bookings, calculate as 1 night minimum
         $nights = max(1, $start->diff($end)->days);
         $results = $this->availability->search($checkIn, $checkOut);
 
@@ -411,10 +439,14 @@ class BookingController extends Controller
 
     public function staffIndex(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
         $user = Auth::user();
         $filter = $request->input('filter', 'upcoming');
-        $reservations = $this->reservations->all($filter, 50);
+        
+        $start = $this->sanitizeDate($request->input('start'));
+        $end = $this->sanitizeDate($request->input('end'));
+        
+        $reservations = $this->reservations->all($filter, 50, $start, $end);
 
         $this->view('dashboard/bookings/index', [
             'user' => $user,
@@ -423,12 +455,26 @@ class BookingController extends Controller
             ],
             'reservations' => $reservations,
             'filter' => $filter,
+            'filters' => [
+                'start' => $start ?? date('Y-m-01'),
+                'end' => $end ?? date('Y-m-d'),
+            ],
         ]);
+    }
+
+    protected function sanitizeDate(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $ts = strtotime($value);
+        return $ts ? date('Y-m-d', $ts) : null;
     }
 
     public function checkIn(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
         $reservationId = (int)$request->input('reservation_id');
 
         try {
@@ -441,7 +487,7 @@ class BookingController extends Controller
 
     public function checkOut(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
         $reservationId = (int)$request->input('reservation_id');
 
         try {
@@ -456,11 +502,167 @@ class BookingController extends Controller
         }
     }
 
+    public function cancel(Request $request): void
+    {
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
+        
+        $reservationId = (int)$request->input('reservation_id');
+        $reason = trim($request->input('reason', ''));
+        
+        if (empty($reason)) {
+            header('Location: ' . base_url('staff/dashboard/bookings?error=' . urlencode('Cancellation reason is required')));
+            return;
+        }
+
+        $reservation = $this->reservations->findById($reservationId);
+        if (!$reservation) {
+            header('Location: ' . base_url('staff/dashboard/bookings?error=' . urlencode('Reservation not found')));
+            return;
+        }
+
+        // Prevent cancellation if already checked in
+        if ($reservation['check_in_status'] === 'checked_in' && $reservation['room_status'] === 'in_house') {
+            header('Location: ' . base_url('staff/dashboard/bookings?error=' . urlencode('Cannot cancel a checked-in reservation. Please check out the guest first.')));
+            return;
+        }
+
+        try {
+            $user = Auth::user();
+            $userId = (int)($user['id'] ?? 0);
+            
+            // Handle cancellation: process refunds and update room availability
+            $this->handleBookingCancellation($reservation, $userId, $reason);
+            
+            // Update reservation status
+            $this->reservations->updateStatus($reservationId, [
+                'status' => 'cancelled',
+                'check_in_status' => 'scheduled', // Reset check-in status
+                'room_status' => 'pending', // Reset room status
+            ]);
+            
+            // If room was assigned, release it
+            if (!empty($reservation['room_id'])) {
+                $this->rooms->updateStatus((int)$reservation['room_id'], 'available');
+            }
+            
+            // Update folio if exists
+            $folio = $this->folios->findByReservation($reservationId);
+            if ($folio) {
+                // Add cancellation entry to folio
+                $this->folios->addEntry(
+                    (int)$folio['id'],
+                    'Booking Cancellation',
+                    -(float)($reservation['total_amount'] ?? 0),
+                    'charge',
+                    'cancellation',
+                    'Booking cancelled: ' . $reason
+                );
+            }
+            
+            // Notify relevant roles
+            $this->notifications->notifyRole('operation_manager', 'Booking Cancelled',
+                sprintf('Booking %s has been cancelled. Reason: %s', $reservation['reference'], $reason),
+                ['reservation_id' => $reservationId, 'reference' => $reservation['reference']]
+            );
+            $this->notifications->notifyRole('finance_manager', 'Booking Cancelled',
+                sprintf('Booking %s has been cancelled. Reason: %s', $reservation['reference'], $reason),
+                ['reservation_id' => $reservationId, 'reference' => $reservation['reference']]
+            );
+            
+            // Send email notification if email exists
+            if (!empty($reservation['guest_email'])) {
+                try {
+                    $this->email->send(
+                        $reservation['guest_email'],
+                        'Booking Cancellation - ' . $reservation['reference'],
+                        sprintf(
+                            "Dear %s,\n\nYour booking %s has been cancelled.\n\nReason: %s\n\nIf you have any questions, please contact us.\n\nBest regards,\n%s",
+                            $reservation['guest_name'],
+                            $reservation['reference'],
+                            $reason,
+                            settings('brand_name', 'Hotel')
+                        )
+                    );
+                } catch (Exception $e) {
+                    error_log('Failed to send cancellation email: ' . $e->getMessage());
+                }
+            }
+            
+            header('Location: ' . base_url('staff/dashboard/bookings?success=' . urlencode('Booking cancelled successfully')));
+        } catch (Exception $e) {
+            header('Location: ' . base_url('staff/dashboard/bookings?error=' . urlencode($e->getMessage())));
+        }
+    }
+
+    /**
+     * Handle booking cancellation: process refunds
+     */
+    protected function handleBookingCancellation(array $reservation, int $userId, string $reason): void
+    {
+        $wasPaid = in_array($reservation['payment_status'] ?? '', ['paid', 'partial']);
+        $totalAmount = (float)($reservation['total_amount'] ?? 0);
+        $depositAmount = (float)($reservation['deposit_amount'] ?? 0);
+        
+        if ($wasPaid && ($totalAmount > 0 || $depositAmount > 0)) {
+            $refundAmount = $totalAmount > 0 ? $totalAmount : $depositAmount;
+            $paymentMethod = $reservation['payment_method'] ?? 'unknown';
+            
+            // Update payment status to refunded
+            $this->reservations->updateStatus((int)$reservation['id'], [
+                'payment_status' => 'refunded'
+            ]);
+            
+            // Log refund in payments table if it exists
+            try {
+                $db = db();
+                $stmt = $db->prepare('
+                    INSERT INTO payments (reference, amount, payment_method, status, notes, created_by)
+                    VALUES (:ref, :amount, :method, "refunded", :notes, :user)
+                ');
+                $stmt->execute([
+                    'ref' => $reservation['reference'],
+                    'amount' => $refundAmount,
+                    'method' => $paymentMethod,
+                    'notes' => 'Refund for cancelled booking: ' . $reason,
+                    'user' => $userId,
+                ]);
+            } catch (\Exception $e) {
+                // Payments table might not exist or have different structure
+                error_log('Could not log refund payment: ' . $e->getMessage());
+            }
+            
+            // If M-Pesa payment, note that refund needs to be processed manually
+            if ($paymentMethod === 'mpesa' && !empty($reservation['mpesa_transaction_id'])) {
+                $this->notifications->notifyRole('finance_manager', 'M-Pesa Refund Required',
+                    sprintf(
+                        'Booking %s was cancelled and requires M-Pesa refund of KES %s. Transaction ID: %s',
+                        $reservation['reference'],
+                        number_format($refundAmount, 2),
+                        $reservation['mpesa_transaction_id']
+                    ),
+                    ['reservation_id' => (int)$reservation['id'], 'reference' => $reservation['reference']]
+                );
+            }
+        }
+    }
+
     public function folio(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
+        
+        // Support both reservation_id and ref (reference) parameters
         $reservationId = (int)$request->input('reservation_id');
-        $reservation = $this->reservations->findById($reservationId);
+        $ref = trim($request->input('ref', ''));
+        
+        $reservation = null;
+        if ($reservationId > 0) {
+            $reservation = $this->reservations->findById($reservationId);
+        } elseif ($ref) {
+            $reservation = $this->reservations->findByReference($ref);
+            if ($reservation) {
+                $reservationId = (int)$reservation['id'];
+            }
+        }
 
         if (!$reservation) {
             http_response_code(404);
@@ -470,8 +672,67 @@ class BookingController extends Controller
 
         $folio = $this->folios->findByReservation($reservationId);
         if (!$folio) {
-            $folioId = $this->folios->create($reservationId);
+            $folioId = $this->folios->create(
+                $reservationId,
+                $reservation['guest_email'] ?? null,
+                $reservation['guest_phone'] ?? null,
+                $reservation['guest_name'] ?? null
+            );
+            // Add room charge
+            $this->folios->addEntry($folioId, 'Room charges', (float)$reservation['total_amount'], 'charge', 'room');
+            
+            // If booking was already paid, add the payment to the folio
+            if (!empty($reservation['payment_status']) && $reservation['payment_status'] === 'paid' && !empty($reservation['total_amount'])) {
+                $paymentMethod = $reservation['payment_method'] ?? 'unknown';
+                $paymentDescription = 'Booking Payment';
+                if ($paymentMethod === 'mpesa') {
+                    $paymentDescription = 'M-Pesa Payment - Booking';
+                    if (!empty($reservation['mpesa_transaction_id'])) {
+                        $paymentDescription .= ' (Transaction: ' . $reservation['mpesa_transaction_id'] . ')';
+                    }
+                } elseif ($paymentMethod === 'pay_on_arrival') {
+                    $paymentDescription = 'Pay on Arrival - Booking';
+                }
+                
+                $this->folios->addEntry($folioId, $paymentDescription, (float)$reservation['total_amount'], 'payment', $paymentMethod);
+            }
+            
             $folio = $this->folios->findByReservation($reservationId);
+        } else {
+            // Folio exists - check if booking payment needs to be synced
+            $entries = $this->folios->entries($folio['id']);
+            $hasBookingPayment = false;
+            foreach ($entries as $entry) {
+                if ($entry['type'] === 'payment' && 
+                    (strpos($entry['description'], 'Booking Payment') !== false || 
+                     strpos($entry['description'], 'M-Pesa Payment - Booking') !== false)) {
+                    $hasBookingPayment = true;
+                    break;
+                }
+            }
+            
+            // If booking is paid but folio doesn't have the payment entry, add it
+            if (!$hasBookingPayment && !empty($reservation['payment_status']) && $reservation['payment_status'] === 'paid' && !empty($reservation['total_amount'])) {
+                $paymentMethod = $reservation['payment_method'] ?? 'unknown';
+                $paymentDescription = 'Booking Payment';
+                if ($paymentMethod === 'mpesa') {
+                    $paymentDescription = 'M-Pesa Payment - Booking';
+                    if (!empty($reservation['mpesa_transaction_id'])) {
+                        $paymentDescription .= ' (Transaction: ' . $reservation['mpesa_transaction_id'] . ')';
+                    }
+                } elseif ($paymentMethod === 'pay_on_arrival') {
+                    $paymentDescription = 'Pay on Arrival - Booking';
+                }
+                
+                $this->folios->addEntry($folio['id'], $paymentDescription, (float)$reservation['total_amount'], 'payment', $paymentMethod);
+                
+                // Reload folio to get updated balance (recalculate will sync booking status automatically)
+                $folio = $this->folios->findByReservation($reservationId);
+            } else {
+                // Ensure folio is recalculated and booking status is synced
+                $this->folios->recalculate((int)$folio['id']);
+                $folio = $this->folios->findByReservation($reservationId);
+            }
         }
 
         $entries = $this->folios->entries($folio['id']);
@@ -509,7 +770,7 @@ class BookingController extends Controller
 
     public function addFolioEntry(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
         $reservationId = (int)$request->input('reservation_id');
         $reservation = $this->reservations->findById($reservationId);
 
@@ -520,7 +781,12 @@ class BookingController extends Controller
 
         $folio = $this->folios->findByReservation($reservationId);
         if (!$folio) {
-            $folioId = $this->folios->create($reservationId);
+            $folioId = $this->folios->create(
+                $reservationId,
+                $reservation['guest_email'] ?? null,
+                $reservation['guest_phone'] ?? null,
+                $reservation['guest_name'] ?? null
+            );
             $folio = $this->folios->findByReservation($reservationId);
         }
 
@@ -562,7 +828,7 @@ class BookingController extends Controller
 
     public function folioMpesaPayment(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
         
         header('Content-Type: application/json');
         
@@ -606,14 +872,12 @@ class BookingController extends Controller
             $mpesaMerchantRequestId = $paymentResult['mpesa_merchant_request_id'] ?? null;
             
             // Create payment transaction record
-            // Note: Using 'other' as transaction_type since 'folio_payment' may not be in enum
-            // We'll identify it by checking reference_code pattern
             $stmt = db()->prepare('
                 INSERT INTO payment_transactions (transaction_type, reference_id, reference_code, payment_method, amount, phone_number, checkout_request_id, merchant_request_id, status)
                 VALUES (:type, :reference_id, :reference_code, :method, :amount, :phone, :checkout_id, :merchant_id, :status)
             ');
             $stmt->execute([
-                'type' => 'other', // Will identify as folio_payment by reference_code starting with 'FOLIO-'
+                'type' => 'folio_payment',
                 'reference_id' => $reservationId,
                 'reference_code' => $reference,
                 'method' => 'mpesa',
@@ -643,7 +907,7 @@ class BookingController extends Controller
 
     public function confirmFolioPayment(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
         
         $transactionId = (int)$request->input('transaction_id');
         $reservationId = (int)$request->input('reservation_id');
@@ -700,7 +964,7 @@ class BookingController extends Controller
 
     public function queryFolioPaymentStatus(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
         
         header('Content-Type: application/json');
         
@@ -760,7 +1024,7 @@ class BookingController extends Controller
 
     public function calendar(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier']);
         $start = $request->input('start', date('Y-m-d'));
         $end = $request->input('end', date('Y-m-d', strtotime('+7 days')));
 
@@ -784,7 +1048,7 @@ class BookingController extends Controller
 
     public function calendarView(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier']);
         $start = $request->input('start', date('Y-m-d'));
         $end = $request->input('end', date('Y-m-d', strtotime('+7 days')));
 
@@ -800,7 +1064,7 @@ class BookingController extends Controller
 
     public function assignRoom(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist']);
         $reservationId = (int)$request->input('reservation_id');
         $roomId = (int)$request->input('room_id');
 
@@ -827,9 +1091,21 @@ class BookingController extends Controller
 
     public function edit(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
+        
+        // Support both reservation_id and ref (reference) parameters
         $reservationId = (int)$request->input('reservation_id');
-        $reservation = $this->reservations->findById($reservationId);
+        $ref = trim($request->input('ref', ''));
+        
+        $reservation = null;
+        if ($reservationId > 0) {
+            $reservation = $this->reservations->findById($reservationId);
+        } elseif ($ref) {
+            $reservation = $this->reservations->findByReference($ref);
+            if ($reservation) {
+                $reservationId = (int)$reservation['id'];
+            }
+        }
 
         if (!$reservation) {
             header('Location: ' . base_url('staff/dashboard/bookings?error=Reservation%20not%20found'));
@@ -853,6 +1129,11 @@ class BookingController extends Controller
                     }
                 }
                 if (!$found) {
+                    // Add room_type_name to current room if not present
+                    if (!isset($currentRoom['room_type_name'])) {
+                        $roomType = $this->roomTypes->find((int)$currentRoom['room_type_id']);
+                        $currentRoom['room_type_name'] = $roomType['name'] ?? 'Room Type';
+                    }
                     $availableRooms[] = $currentRoom;
                 }
             }
@@ -869,7 +1150,7 @@ class BookingController extends Controller
 
     public function update(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'cashier', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
         $reservationId = (int)$request->input('reservation_id');
         $reservation = $this->reservations->findById($reservationId);
 
@@ -887,8 +1168,8 @@ class BookingController extends Controller
             if ($checkIn && $checkOut) {
                 $start = new DateTimeImmutable($checkIn);
                 $end = new DateTimeImmutable($checkOut);
-                if ($end <= $start) {
-                    header('Location: ' . base_url('staff/dashboard/bookings/edit?reservation_id=' . $reservationId . '&error=Check-out%20must%20be%20after%20check-in'));
+                if ($end < $start) {
+                    header('Location: ' . base_url('staff/dashboard/bookings/edit?reservation_id=' . $reservationId . '&error=Check-out%20must%20be%20on%20or%20after%20check-in'));
                     return;
                 }
             }
@@ -974,10 +1255,482 @@ class BookingController extends Controller
         $roomType = $this->roomTypes->find((int)$reservation['room_type_id']);
         $room = $reservation['room_id'] ? $this->rooms->find((int)$reservation['room_id']) : null;
 
+        // Check if this is a print request - use receipt format
+        $print = $request->input('print') === '1' || $request->input('receipt') === '1';
+        
+        if ($print) {
+            // Use the same receipt format as the download receipt
+            $this->renderReceiptForConfirmation($reservation, $roomType, $room);
+            return;
+        }
+
         $this->view('website/booking/confirmation', [
             'reservation' => $reservation,
             'roomType' => $roomType,
             'room' => $room,
+        ]);
+    }
+    
+    /**
+     * Render receipt for confirmation page (same format as download receipt)
+     */
+    protected function renderReceiptForConfirmation(array $booking, ?array $roomType, ?array $room): void
+    {
+        $brandName = settings('branding.name', 'Hotela');
+        $brandAddress = settings('branding.address', '');
+        $brandPhone = settings('branding.contact_phone', '');
+        $brandEmail = settings('branding.contact_email', '');
+        
+        $checkIn = new \DateTimeImmutable($booking['check_in'] ?? date('Y-m-d'));
+        $checkOut = new \DateTimeImmutable($booking['check_out'] ?? date('Y-m-d'));
+        $nights = max(1, $checkIn->diff($checkOut)->days);
+        
+        $reference = $booking['reference'] ?? 'N/A';
+        $guestName = $booking['guest_name'] ?? 'Guest';
+        $guestEmail = $booking['guest_email'] ?? '';
+        $guestPhone = $booking['guest_phone'] ?? '';
+        $totalAmount = (float)($booking['total_amount'] ?? 0);
+        $paymentStatus = $booking['payment_status'] ?? 'unpaid';
+        $paymentMethod = $booking['payment_method'] ?? 'pay_on_arrival';
+        $roomTypeName = $roomType['name'] ?? 'Room Type';
+        $roomNumber = $room ? ($room['room_number'] ?? $room['display_name'] ?? '') : '';
+        
+        $nightlyRate = $nights > 0 ? $totalAmount / $nights : $totalAmount;
+        
+        // Build QR code URL - link to online receipt
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
+        $receiptPath = base_url('guest/booking?ref=' . urlencode($reference) . '&download=receipt');
+        $receiptUrl = $scheme . '://' . $host . $receiptPath;
+        $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=1&data=' . urlencode($receiptUrl);
+        
+        $businessAddressHtml = $brandAddress ? '<p>' . htmlspecialchars($brandAddress) . '</p>' : '';
+        $businessPhoneHtml = $brandPhone ? '<p>Tel: ' . htmlspecialchars($brandPhone) . '</p>' : '';
+        $businessEmailHtml = $brandEmail ? '<p>Email: ' . htmlspecialchars($brandEmail) . '</p>' : '';
+        $guestEmailHtml = $guestEmail ? '<div class="detail-row"><span class="detail-label">Email:</span><span class="detail-value">' . htmlspecialchars($guestEmail) . '</span></div>' : '';
+        $guestPhoneHtml = $guestPhone ? '<div class="detail-row"><span class="detail-label">Phone:</span><span class="detail-value">' . htmlspecialchars($guestPhone) . '</span></div>' : '';
+        $roomNumberHtml = $roomNumber ? '<br><small>Room: ' . htmlspecialchars($roomNumber) . '</small>' : '';
+        $paymentMethodText = $paymentMethod === 'mpesa' ? 'M-Pesa' : 'Pay on Arrival';
+        
+        // Use the same HTML structure as the download receipt
+        $html = $this->buildReceiptHtml($brandName, $brandAddress, $brandPhone, $brandEmail, $reference, $guestName, $guestEmail, $guestPhone, $checkIn, $checkOut, $nights, $roomTypeName, $roomNumber, $nightlyRate, $totalAmount, $paymentMethodText, $paymentStatus, $qrCodeUrl, $businessAddressHtml, $businessPhoneHtml, $businessEmailHtml, $guestEmailHtml, $guestPhoneHtml, $roomNumberHtml);
+        
+        header('Content-Type: text/html; charset=UTF-8');
+        echo $html;
+    }
+    
+    /**
+     * Build receipt HTML (shared with GuestPortalController format)
+     */
+    protected function buildReceiptHtml(string $brandName, string $brandAddress, string $brandPhone, string $brandEmail, string $reference, string $guestName, string $guestEmail, string $guestPhone, \DateTimeImmutable $checkIn, \DateTimeImmutable $checkOut, int $nights, string $roomTypeName, string $roomNumber, float $nightlyRate, float $totalAmount, string $paymentMethodText, string $paymentStatus, string $qrCodeUrl, string $businessAddressHtml, string $businessPhoneHtml, string $businessEmailHtml, string $guestEmailHtml, string $guestPhoneHtml, string $roomNumberHtml): string
+    {
+        return '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>' . htmlspecialchars($brandName) . ' - Receipt</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, \'Helvetica Neue\', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            background: white;
+            padding: 2rem;
+        }
+        .receipt-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: white;
+            page-break-inside: avoid;
+        }
+        .receipt-header {
+            text-align: center;
+            border-bottom: 2px solid #1e293b;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .receipt-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0;
+        }
+        .business-info {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #475569;
+            font-size: 0.85rem;
+        }
+        .business-info p {
+            margin: 0.2rem 0;
+        }
+        .receipt-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .detail-section h3 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        .detail-label {
+            color: #64748b;
+        }
+        .detail-value {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        .items-table th {
+            background: #f8fafc;
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .items-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .items-table tr:last-child td {
+            border-bottom: none;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .total-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid #1e293b;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+        }
+        .total-row.grand-total {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 2px solid #e2e8f0;
+        }
+        .payment-info {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+        .payment-info h3 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 1rem;
+        }
+        .footer {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+        .footer p {
+            margin: 0.5rem 0;
+        }
+        @media print {
+            @page {
+                size: A4;
+                margin: 0.3in;
+            }
+            * {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            body { 
+                padding: 0 !important;
+                margin: 0 !important;
+                font-size: 11pt;
+            }
+            .receipt-container { 
+                max-width: 100% !important;
+                padding: 0.5rem !important;
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+                height: auto !important;
+            }
+            .receipt-header {
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+                margin-bottom: 0.75rem !important;
+                padding-bottom: 0.75rem !important;
+            }
+            .receipt-header h1 {
+                font-size: 1.25rem !important;
+                margin-bottom: 0 !important;
+            }
+            .business-info {
+                margin-bottom: 0.75rem !important;
+                font-size: 0.75rem !important;
+            }
+            .business-info p {
+                margin: 0.15rem 0 !important;
+            }
+            .receipt-details {
+                page-break-inside: avoid !important;
+                margin-bottom: 0.75rem !important;
+                gap: 1rem !important;
+            }
+            .detail-section h3 {
+                font-size: 0.75rem !important;
+                margin-bottom: 0.5rem !important;
+                padding-bottom: 0.25rem !important;
+            }
+            .detail-row {
+                margin-bottom: 0.35rem !important;
+                font-size: 0.85rem !important;
+            }
+            .items-table {
+                page-break-inside: avoid !important;
+                margin: 0.75rem 0 !important;
+                font-size: 0.8rem !important;
+            }
+            .items-table th,
+            .items-table td {
+                padding: 0.4rem !important;
+            }
+            .items-table thead {
+                display: table-header-group;
+            }
+            .items-table tbody {
+                display: table-row-group;
+            }
+            .items-table tr {
+                page-break-inside: avoid !important;
+            }
+            .total-section {
+                page-break-inside: avoid !important;
+                page-break-before: avoid !important;
+                margin-top: 0.75rem !important;
+                padding-top: 0.75rem !important;
+            }
+            .total-row {
+                font-size: 0.9rem !important;
+                margin-bottom: 0.35rem !important;
+            }
+            .total-row.grand-total {
+                font-size: 1.1rem !important;
+                margin-top: 0.5rem !important;
+                padding-top: 0.5rem !important;
+            }
+            .payment-info {
+                page-break-inside: avoid !important;
+                margin: 0.75rem 0 !important;
+                padding: 0.75rem !important;
+            }
+            .payment-info h3 {
+                font-size: 0.75rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            .footer {
+                page-break-inside: avoid !important;
+                margin-top: 0.75rem !important;
+                padding-top: 0.75rem !important;
+                font-size: 0.75rem !important;
+            }
+            .footer p {
+                margin: 0.35rem 0 !important;
+            }
+            .footer img {
+                width: 120px !important;
+                height: 120px !important;
+                max-width: 120px !important;
+                max-height: 120px !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .footer div[style*="inline-block"] {
+                page-break-inside: avoid !important;
+                margin: 0.75rem 0 !important;
+                padding: 0.5rem !important;
+            }
+            .footer div[style*="margin: 1.5rem"] {
+                margin: 0.75rem 0 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="receipt-header">
+            <h1>' . htmlspecialchars($brandName) . '</h1>
+        </div>
+        
+        <div class="business-info">
+            ' . $businessAddressHtml . '
+            ' . $businessPhoneHtml . '
+            ' . $businessEmailHtml . '
+        </div>
+        
+        <div class="receipt-details">
+            <div class="detail-section">
+                <h3>Booking Information</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Reference:</span>
+                    <span class="detail-value">' . htmlspecialchars($reference) . '</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Date:</span>
+                    <span class="detail-value">' . $checkIn->format('F j, Y') . '</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Check-in:</span>
+                    <span class="detail-value">' . $checkIn->format('F j, Y') . '</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Check-out:</span>
+                    <span class="detail-value">' . $checkOut->format('F j, Y') . '</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Nights:</span>
+                    <span class="detail-value">' . $nights . '</span>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <h3>Guest Information</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Name:</span>
+                    <span class="detail-value">' . htmlspecialchars($guestName) . '</span>
+                </div>
+                ' . $guestEmailHtml . '
+                ' . $guestPhoneHtml . '
+            </div>
+        </div>
+        
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="text-right">Nights</th>
+                    <th class="text-right">Rate</th>
+                    <th class="text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <strong>' . htmlspecialchars($roomTypeName) . '</strong>
+                        ' . $roomNumberHtml . '
+                    </td>
+                    <td class="text-right">' . $nights . '</td>
+                    <td class="text-right">KES ' . number_format($nightlyRate, 2) . '</td>
+                    <td class="text-right"><strong>KES ' . number_format($totalAmount, 2) . '</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="total-section">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span>KES ' . number_format($totalAmount, 2) . '</span>
+            </div>
+            <div class="total-row grand-total">
+                <span>Total Amount:</span>
+                <span>KES ' . number_format($totalAmount, 2) . '</span>
+            </div>
+        </div>
+        
+        <div class="payment-info">
+            <h3>Payment Information</h3>
+            <div class="detail-row">
+                <span class="detail-label">Payment Method:</span>
+                <span class="detail-value">' . htmlspecialchars($paymentMethodText) . '</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Payment Status:</span>
+                <span class="detail-value">' . ucfirst($paymentStatus) . '</span>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Thank you for your booking!</p>
+            <p>This is an official receipt for your reservation.</p>
+            <div style="margin: 1.5rem 0; text-align: center;">
+                <p style="margin-bottom: 0.75rem; font-size: 0.9rem; color: #64748b; font-weight: 500;">Scan to view booking details</p>
+                <div style="display: inline-block; padding: 1rem; background: white; border: 2px solid #e2e8f0; border-radius: 8px;">
+                    <img src="' . htmlspecialchars($qrCodeUrl, ENT_QUOTES, 'UTF-8') . '" alt="QR Code - Booking Details" style="width: 200px; height: 200px; display: block; max-width: 100%;">
+                </div>
+            </div>
+            <p style="margin-top: 1rem; font-size: 0.75rem; color: #64748b;">Generated on ' . date('F j, Y \a\t g:i A') . '</p>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-print when opened
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        };
+    </script>
+</body>
+</html>';
+    }
+
+    /**
+     * API endpoint to check payment status for real-time updates
+     */
+    public function checkPaymentStatus(Request $request): void
+    {
+        header('Content-Type: application/json');
+        
+        $reference = trim($request->input('reference', ''));
+        if (empty($reference)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Booking reference required']);
+            return;
+        }
+
+        $reservation = $this->reservations->findByReference($reference);
+        if (!$reservation) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Booking not found']);
+            return;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'payment_status' => $reservation['payment_status'] ?? 'unpaid',
+            'mpesa_status' => $reservation['mpesa_status'] ?? null,
+            'booking_status' => $reservation['status'] ?? 'pending',
+            'mpesa_transaction_id' => $reservation['mpesa_transaction_id'] ?? null,
         ]);
     }
 
@@ -1011,6 +1764,78 @@ class BookingController extends Controller
             'ref_id' => $referenceId,
             'ref_code' => $referenceCode,
             'checkout_id' => $checkoutRequestId,
+        ]);
+    }
+
+    public function guests(Request $request): void
+    {
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'cashier', 'finance_manager']);
+
+        // Get currently checked-in guests
+        $checkedInGuests = $this->reservations->checkedInGuests();
+        
+        // Get upcoming arrivals (today and tomorrow)
+        $today = date('Y-m-d');
+        $tomorrow = date('Y-m-d', strtotime('+1 day'));
+        
+        // Get all upcoming reservations
+        $allUpcoming = $this->reservations->upcoming(50);
+        
+        // Filter for today and tomorrow arrivals (not yet checked in)
+        $todayArrivals = [];
+        $tomorrowArrivals = [];
+        
+        foreach ($allUpcoming as $res) {
+            $checkInDate = $res['check_in'] ?? '';
+            $checkInStatus = $res['check_in_status'] ?? '';
+            
+            if ($checkInDate === $today && $checkInStatus !== 'checked_in') {
+                $todayArrivals[] = $res;
+            } elseif ($checkInDate === $tomorrow && $checkInStatus !== 'checked_in') {
+                $tomorrowArrivals[] = $res;
+            }
+        }
+
+        $this->view('dashboard/guests/index', [
+            'checkedInGuests' => $checkedInGuests ?: [],
+            'todayArrivals' => $todayArrivals,
+            'tomorrowArrivals' => $tomorrowArrivals,
+        ]);
+    }
+
+    public function invoices(Request $request): void
+    {
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'receptionist', 'cashier', 'finance_manager']);
+
+        $status = $request->input('status', '');
+        $startDate = $request->input('start', '');
+        $endDate = $request->input('end', '');
+        
+        // Get all folios with reservation details
+        $invoices = $this->folios->all(
+            $status ?: null,
+            $startDate ?: null,
+            $endDate ?: null,
+            200
+        );
+
+        // Calculate summary statistics
+        $totalInvoices = count($invoices);
+        $totalAmount = array_sum(array_column($invoices, 'total'));
+        $totalBalance = array_sum(array_column($invoices, 'balance'));
+        $openCount = count(array_filter($invoices, fn($inv) => ($inv['status'] ?? '') === 'open'));
+        $closedCount = count(array_filter($invoices, fn($inv) => ($inv['status'] ?? '') === 'closed'));
+
+        $this->view('dashboard/invoices/index', [
+            'invoices' => $invoices,
+            'status' => $status,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'totalInvoices' => $totalInvoices,
+            'totalAmount' => $totalAmount,
+            'totalBalance' => $totalBalance,
+            'openCount' => $openCount,
+            'closedCount' => $closedCount,
         ]);
     }
 }

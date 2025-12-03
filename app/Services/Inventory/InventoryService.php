@@ -35,6 +35,20 @@ class InventoryService
                 $reorderPoint
             );
 
+            // Create workflow task for inventory requisition
+            try {
+                $workflowService = new \App\Services\Workflow\WorkflowService();
+                $workflowService->createInventoryRequisition(
+                    $inventoryItemId,
+                    $item['name'] ?? 'Inventory Item',
+                    (int)$level,
+                    (int)$reorderPoint
+                );
+            } catch (\Exception $e) {
+                // Log error but continue with notifications
+                error_log('Failed to create inventory requisition task: ' . $e->getMessage());
+            }
+
             foreach (['operation_manager', 'finance_manager', 'admin'] as $role) {
                 $this->notifications->notifyRole($role, 'Low stock alert', $message, [
                     'item_id' => $inventoryItemId,
@@ -63,6 +77,16 @@ class InventoryService
     public function valuation(): float
     {
         return $this->inventory->inventoryValuation();
+    }
+
+    public function convertQuantity(float $quantity, ?string $sourceUnit, ?string $targetUnit, float $conversionFactor = 1.0): float
+    {
+        return $this->inventory->convertQuantity($quantity, $sourceUnit, $targetUnit, $conversionFactor);
+    }
+
+    public function updateProductionCost(int $posItemId): void
+    {
+        $this->inventory->updateProductionCost($posItemId);
     }
 }
 

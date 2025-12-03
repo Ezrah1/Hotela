@@ -69,13 +69,14 @@ ob_start();
     <!-- Statistics Overview -->
     <div class="stats-grid">
         <?php
-        $totalDays = 0;
-        $totalHours = 0;
-        $totalEmployees = count($statistics ?? []);
-        foreach ($statistics ?? [] as $stat) {
-            $totalDays += (int)$stat['total_days'];
-            $totalHours += (float)$stat['total_hours'];
-        }
+        $statistics = $statistics ?? [];
+        $totalDays = (int)($statistics['days_worked'] ?? 0);
+        $totalCheckIns = (int)($statistics['total_check_ins'] ?? 0);
+        $avgHours = (float)($statistics['avg_hours_per_day'] ?? 0);
+        // Calculate total hours: days worked * average hours per day
+        $totalHours = $totalDays * $avgHours;
+        // Count unique employees from allRecords
+        $totalEmployees = !empty($allRecords) ? count(array_unique(array_column($allRecords, 'user_id'))) : 0;
         ?>
         <div class="stat-card">
             <div class="stat-icon" style="background: #dbeafe; color: #1e40af;">
@@ -146,41 +147,62 @@ ob_start();
             <p class="anomalies-description">The following records show patterns that may indicate attendance manipulation or errors. Review carefully, especially for management roles.</p>
             <div class="anomalies-list">
                 <?php foreach ($anomalies as $anomaly): ?>
-                    <div class="anomaly-card severity-<?= htmlspecialchars($anomaly['severity']); ?>">
+                    <?php
+                    $checkInHour = (int)date('H', strtotime($anomaly['check_in_time']));
+                    $hoursWorked = $anomaly['check_out_time'] 
+                        ? round((strtotime($anomaly['check_out_time']) - strtotime($anomaly['check_in_time'])) / 3600, 2)
+                        : null;
+                    $severity = ($checkInHour < 6 || $checkInHour >= 22) ? 'warning' : 'info';
+                    $issue = ($checkInHour < 6 || $checkInHour >= 22) 
+                        ? 'Check-in outside normal business hours (' . date('H:i', strtotime($anomaly['check_in_time'])) . ')'
+                        : 'Unusual check-in time';
+                    ?>
+                    <div class="anomaly-card severity-<?= htmlspecialchars($severity); ?>">
                         <div class="anomaly-header">
                             <div>
-                                <strong><?= htmlspecialchars($anomaly['record']['user_name']); ?></strong>
-                                <span class="role-badge"><?= htmlspecialchars($anomaly['record']['role_key'] ?? 'N/A'); ?></span>
+                                <strong><?= htmlspecialchars($anomaly['user_name'] ?? 'Unknown'); ?></strong>
+                                <span class="role-badge"><?= htmlspecialchars($anomaly['user_role'] ?? 'N/A'); ?></span>
                             </div>
-                            <span class="severity-badge severity-<?= htmlspecialchars($anomaly['severity']); ?>">
-                                <?= strtoupper(htmlspecialchars($anomaly['severity'])); ?>
+                            <span class="severity-badge severity-<?= htmlspecialchars($severity); ?>">
+                                <?= strtoupper(htmlspecialchars($severity)); ?>
                             </span>
                         </div>
                         <div class="anomaly-details">
                             <div class="detail-item">
                                 <span class="detail-label">Date:</span>
-                                <span class="detail-value"><?= date('M j, Y', strtotime($anomaly['record']['date'])); ?></span>
+                                <span class="detail-value"><?= date('M j, Y', strtotime($anomaly['check_in_time'])); ?></span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Check In:</span>
-                                <span class="detail-value"><?= date('H:i', strtotime($anomaly['record']['check_in_time'])); ?></span>
+                                <span class="detail-value"><?= date('H:i', strtotime($anomaly['check_in_time'])); ?></span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Check Out:</span>
-                                <span class="detail-value"><?= date('H:i', strtotime($anomaly['record']['check_out_time'])); ?></span>
+                                <span class="detail-value"><?= $anomaly['check_out_time'] ? date('H:i', strtotime($anomaly['check_out_time'])) : '--'; ?></span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Hours:</span>
-                                <span class="detail-value"><?= round($anomaly['record']['hours_worked'], 2); ?> hrs</span>
+                                <span class="detail-value"><?= $hoursWorked !== null ? number_format($hoursWorked, 2) . ' hrs' : '--'; ?></span>
                             </div>
                         </div>
                         <div class="anomaly-issues">
                             <strong>Issues Detected:</strong>
                             <ul>
-                                <?php foreach ($anomaly['issues'] as $issue): ?>
-                                    <li><?= htmlspecialchars($issue); ?></li>
-                                <?php endforeach; ?>
+                                <li><?= htmlspecialchars($issue); ?></li>
                             </ul>
+                        </div>
+                        <div class="anomaly-actions">
+                            <button 
+                                type="button" 
+                                class="btn btn-secondary btn-sm ignore-anomaly-btn" 
+                                data-attendance-log-id="<?= (int)$anomaly['id']; ?>"
+                                onclick="ignoreAnomaly(<?= (int)$anomaly['id']; ?>)"
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 6L6 18M6 6l12 12"></path>
+                                </svg>
+                                Ignore
+                            </button>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -202,21 +224,17 @@ ob_start();
                     <div class="performer-card">
                         <div class="performer-rank">#<?= $index + 1; ?></div>
                         <div class="performer-info">
-                            <strong><?= htmlspecialchars($performer['user_name']); ?></strong>
-                            <small><?= htmlspecialchars($performer['role_key'] ?? 'N/A'); ?></small>
+                            <strong><?= htmlspecialchars($performer['name'] ?? 'Unknown'); ?></strong>
+                            <small><?= htmlspecialchars($performer['email'] ?? 'N/A'); ?></small>
                         </div>
                         <div class="performer-stats">
                             <div class="performer-stat">
                                 <span class="stat-label">Days:</span>
-                                <span class="stat-value"><?= (int)$performer['days_present']; ?></span>
+                                <span class="stat-value"><?= (int)($performer['days_worked'] ?? 0); ?></span>
                             </div>
                             <div class="performer-stat">
-                                <span class="stat-label">Hours:</span>
-                                <span class="stat-value"><?= round((float)$performer['total_hours'], 1); ?></span>
-                            </div>
-                            <div class="performer-stat">
-                                <span class="stat-label">Avg/Day:</span>
-                                <span class="stat-value"><?= round((float)$performer['avg_hours_per_day'], 1); ?>h</span>
+                                <span class="stat-label">Avg Hours:</span>
+                                <span class="stat-value"><?= round((float)($performer['avg_hours'] ?? 0), 1); ?>h</span>
                             </div>
                         </div>
                     </div>
@@ -226,7 +244,7 @@ ob_start();
     <?php endif; ?>
 
     <!-- Employee Statistics Table -->
-    <?php if (!empty($statistics)): ?>
+    <?php if (!empty($perEmployeeStats)): ?>
         <div class="statistics-section">
             <h3>Employee Statistics</h3>
             <table class="modern-table">
@@ -242,17 +260,17 @@ ob_start();
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($statistics as $stat): ?>
+                    <?php foreach ($perEmployeeStats as $stat): ?>
                         <tr>
                             <td>
-                                <strong><?= htmlspecialchars($stat['user_name']); ?></strong>
+                                <strong><?= htmlspecialchars($stat['user_name'] ?? 'Unknown'); ?></strong>
                             </td>
                             <td><?= htmlspecialchars($stat['role_key'] ?? 'N/A'); ?></td>
-                            <td><?= (int)$stat['total_days']; ?></td>
-                            <td><strong><?= number_format((float)$stat['total_hours'], 1); ?>h</strong></td>
-                            <td><?= $stat['avg_hours_per_day'] ? number_format((float)$stat['avg_hours_per_day'], 1) . 'h' : 'N/A'; ?></td>
-                            <td><?= $stat['min_hours'] ? number_format((float)$stat['min_hours'], 1) . 'h' : 'N/A'; ?></td>
-                            <td><?= $stat['max_hours'] ? number_format((float)$stat['max_hours'], 1) . 'h' : 'N/A'; ?></td>
+                            <td><?= (int)($stat['total_days'] ?? 0); ?></td>
+                            <td><strong><?= number_format((float)($stat['total_hours'] ?? 0), 1); ?>h</strong></td>
+                            <td><?= !empty($stat['avg_hours_per_day']) ? number_format((float)$stat['avg_hours_per_day'], 1) . 'h' : 'N/A'; ?></td>
+                            <td><?= !empty($stat['min_hours']) ? number_format((float)$stat['min_hours'], 1) . 'h' : 'N/A'; ?></td>
+                            <td><?= !empty($stat['max_hours']) ? number_format((float)$stat['max_hours'], 1) . 'h' : 'N/A'; ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -260,10 +278,10 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <!-- Check In/Out Forms (Only for Security and Tech Admin) -->
+    <!-- Check In/Out Forms (Only for Security and Tech) -->
     <?php
     $currentUser = \App\Support\Auth::user();
-    $canCheckInOut = in_array($currentUser['role_key'] ?? '', ['security', 'tech_admin'], true);
+    $canCheckInOut = in_array($currentUser['role_key'] ?? '', ['security', 'tech'], true);
     ?>
     <?php if ($canCheckInOut): ?>
     <div class="attendance-actions">
@@ -387,25 +405,26 @@ ob_start();
                     <?php foreach ($todayAttendance as $record): ?>
                         <?php
                         $hours = null;
-                        if ($record['check_out_time']) {
+                        if (!empty($record['check_out_time'])) {
                             $checkIn = strtotime($record['check_in_time']);
                             $checkOut = strtotime($record['check_out_time']);
                             $hours = round(($checkOut - $checkIn) / 3600, 2);
                         }
+                        $status = $record['status'] ?? 'present';
                         ?>
                         <tr>
                             <td>
-                                <strong><?= htmlspecialchars($record['user_name']); ?></strong><br>
-                                <small><?= htmlspecialchars($record['user_email']); ?></small>
+                                <strong><?= htmlspecialchars($record['user_name'] ?? 'Unknown'); ?></strong><br>
+                                <small><?= htmlspecialchars($record['user_email'] ?? ''); ?></small>
                             </td>
-                            <td><?= htmlspecialchars($record['role_key'] ?? 'N/A'); ?></td>
+                            <td><?= htmlspecialchars($record['user_role'] ?? 'N/A'); ?></td>
                             <td><?= date('H:i', strtotime($record['check_in_time'])); ?></td>
-                            <td><?= $record['check_out_time'] ? date('H:i', strtotime($record['check_out_time'])) : '--'; ?></td>
+                            <td><?= !empty($record['check_out_time']) ? date('H:i', strtotime($record['check_out_time'])) : '--'; ?></td>
                             <td><?= $hours !== null ? number_format($hours, 1) . 'h' : '--'; ?></td>
                             <td>
-                                <?php if ($record['checked_in'] && !$record['checked_out']): ?>
+                                <?php if ($status === 'present'): ?>
                                     <span class="status status-checked_in">Checked In</span>
-                                <?php elseif ($record['checked_out']): ?>
+                                <?php elseif ($status === 'checked_out'): ?>
                                     <span class="status status-checked_out">Checked Out</span>
                                 <?php else: ?>
                                     <span class="status">Pending</span>
@@ -442,26 +461,32 @@ ob_start();
                 </thead>
                 <tbody>
                     <?php foreach ($allRecords as $record): ?>
+                        <?php
+                        $hoursWorked = $record['check_out_time'] 
+                            ? round((strtotime($record['check_out_time']) - strtotime($record['check_in_time'])) / 3600, 2)
+                            : null;
+                        $status = $record['status'] ?? 'present';
+                        ?>
                         <tr>
-                            <td><?= date('M j, Y', strtotime($record['date'])); ?></td>
+                            <td><?= date('M j, Y', strtotime($record['check_in_time'])); ?></td>
                             <td>
-                                <strong><?= htmlspecialchars($record['user_name']); ?></strong><br>
-                                <small><?= htmlspecialchars($record['user_email']); ?></small>
+                                <strong><?= htmlspecialchars($record['user_name'] ?? 'Unknown'); ?></strong><br>
+                                <small><?= htmlspecialchars($record['user_email'] ?? ''); ?></small>
                             </td>
-                            <td><?= htmlspecialchars($record['role_key'] ?? 'N/A'); ?></td>
+                            <td><?= htmlspecialchars($record['user_role'] ?? 'N/A'); ?></td>
                             <td><?= date('H:i', strtotime($record['check_in_time'])); ?></td>
                             <td><?= $record['check_out_time'] ? date('H:i', strtotime($record['check_out_time'])) : '--'; ?></td>
                             <td>
-                                <?php if ($record['hours_worked'] !== null): ?>
-                                    <strong><?= number_format($record['hours_worked'], 2); ?>h</strong>
+                                <?php if ($hoursWorked !== null): ?>
+                                    <strong><?= number_format($hoursWorked, 2); ?>h</strong>
                                 <?php else: ?>
                                     <span style="color: #94a3b8;">--</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if ($record['checked_in'] && !$record['checked_out']): ?>
+                                <?php if ($status === 'present'): ?>
                                     <span class="status status-checked_in">Checked In</span>
-                                <?php elseif ($record['checked_out']): ?>
+                                <?php elseif ($status === 'checked_out'): ?>
                                     <span class="status status-checked_out">Checked Out</span>
                                 <?php else: ?>
                                     <span class="status">Pending</span>
@@ -953,8 +978,98 @@ ob_start();
     .filter-grid {
         grid-template-columns: 1fr;
     }
+
+    .anomaly-actions {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .ignore-anomaly-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        border-radius: 0.375rem;
+        transition: all 0.2s;
+    }
+
+    .ignore-anomaly-btn:hover {
+        background-color: #64748b;
+        color: #fff;
+    }
+
+    .anomaly-card.ignored {
+        opacity: 0.6;
+        background-color: #f8fafc;
+    }
 }
 </style>
+
+<script>
+function ignoreAnomaly(attendanceLogId) {
+    if (!confirm('Are you sure you want to ignore this anomaly? It will be hidden from the anomalies list.')) {
+        return;
+    }
+
+    const btn = document.querySelector(`[data-attendance-log-id="${attendanceLogId}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>Ignoring...</span>';
+    }
+
+    fetch('<?= base_url('staff/dashboard/attendance/ignore-anomaly'); ?>', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            attendance_log_id: attendanceLogId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Find the anomaly card and remove it
+            const card = btn.closest('.anomaly-card');
+            if (card) {
+                card.style.transition = 'opacity 0.3s, transform 0.3s';
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(-20px)';
+                setTimeout(() => {
+                    card.remove();
+                    
+                    // Check if there are no more anomalies
+                    const anomaliesList = document.querySelector('.anomalies-list');
+                    if (anomaliesList && anomaliesList.children.length === 0) {
+                        const section = document.querySelector('.anomalies-section');
+                        if (section) {
+                            section.innerHTML = '<p class="empty-state">No anomalies detected.</p>';
+                        }
+                    }
+                }, 300);
+            }
+        } else {
+            alert('Failed to ignore anomaly: ' + (data.message || 'Unknown error'));
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 0.25rem;"><path d="M18 6L6 18M6 6l12 12"></path></svg>Ignore';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while ignoring the anomaly.');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline-block; vertical-align: middle; margin-right: 0.25rem;"><path d="M18 6L6 18M6 6l12 12"></path></svg>Ignore';
+        }
+    });
+}
+</script>
 
 <?php
 $slot = ob_get_clean();

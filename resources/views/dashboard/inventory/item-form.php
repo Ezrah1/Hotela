@@ -81,9 +81,17 @@ ob_start();
 
             <div class="form-group">
                 <label>
-                    <span>Average Cost (KES)</span>
-                    <input type="number" name="avg_cost" value="<?= htmlspecialchars($item['avg_cost'] ?? '0'); ?>" step="0.01" min="0" placeholder="0.00">
-                    <small>Average purchase cost per unit</small>
+                    <span>Buying Price (KES) <span class="required">*</span></span>
+                    <input type="number" name="avg_cost" value="<?= htmlspecialchars($item['avg_cost'] ?? '0'); ?>" step="0.01" min="0" placeholder="0.00" required>
+                    <small>Purchase cost per unit (cost price)</small>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <span>Selling Price (KES)</span>
+                    <input type="number" name="selling_price" value="<?= htmlspecialchars($item['selling_price'] ?? '0'); ?>" step="0.01" min="0" placeholder="0.00">
+                    <small>Sale price per unit (for POS items)</small>
                 </label>
             </div>
 
@@ -112,6 +120,56 @@ ob_start();
                 <span>Allow Negative Stock</span>
                 <small>Allow stock to go below zero (useful for items sold before receiving stock)</small>
             </label>
+        </div>
+
+        <div class="stock-section">
+            <h3 style="margin: 2rem 0 1rem 0; font-size: 1.25rem; color: var(--dark);">Initial Stock Levels</h3>
+            <p style="margin-bottom: 1.5rem; color: #64748b; font-size: 0.95rem;">
+                Set initial stock quantities for each location. Leave empty if adding stock later.
+            </p>
+            
+            <div class="stock-locations">
+                <?php 
+                $locations = $locations ?? [];
+                $itemId = $item['id'] ?? null;
+                
+                foreach ($locations as $location): 
+                    $locationId = (int)$location['id'];
+                    $currentStock = 0;
+                    if ($itemId) {
+                        $inventoryRepo = new \App\Repositories\InventoryRepository();
+                        $currentStock = $inventoryRepo->level($itemId, $locationId);
+                    }
+                ?>
+                    <div class="stock-location-item">
+                        <label>
+                            <span><?= htmlspecialchars($location['name']); ?></span>
+                            <input 
+                                type="number" 
+                                name="stock[<?= $locationId; ?>]" 
+                                value="<?= $mode === 'edit' ? htmlspecialchars($currentStock) : ''; ?>" 
+                                step="0.01" 
+                                min="0" 
+                                placeholder="0.00">
+                            <small>
+                                <?php if ($mode === 'edit'): ?>
+                                    Current: <?= number_format($currentStock, 2); ?> <?= htmlspecialchars($item['unit'] ?? 'unit'); ?>
+                                <?php else: ?>
+                                    Set initial quantity (optional)
+                                <?php endif; ?>
+                            </small>
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+                
+                <?php if (empty($locations)): ?>
+                    <div class="stock-location-item">
+                        <p style="color: #64748b; font-size: 0.9rem; margin: 0;">
+                            No locations configured. Stock can be added later after creating the item.
+                        </p>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="form-actions">
@@ -279,6 +337,57 @@ ob_start();
     color: #991b1b;
 }
 
+.stock-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e2e8f0;
+}
+
+.stock-locations {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.stock-location-item {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+}
+
+.stock-location-item label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stock-location-item label span {
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+.stock-location-item input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.stock-location-item input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(138, 106, 63, 0.1);
+}
+
+.stock-location-item small {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
 @media (max-width: 768px) {
     .form-header {
         flex-direction: column;
@@ -286,6 +395,10 @@ ob_start();
     }
 
     .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stock-locations {
         grid-template-columns: 1fr;
     }
 }

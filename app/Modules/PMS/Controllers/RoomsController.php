@@ -24,7 +24,7 @@ class RoomsController extends Controller
 
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'housekeeping']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'housekeeping']);
 
         $filter = $request->input('filter', 'all');
         $roomTypeId = $request->input('room_type_id') ? (int)$request->input('room_type_id') : null;
@@ -45,7 +45,7 @@ class RoomsController extends Controller
             });
         }
 
-        // Get current reservations for each room
+        // Get current reservations for each room (calendar() already excludes checked-out bookings)
         $today = date('Y-m-d');
         $activeReservations = $this->reservations->calendar($today, date('Y-m-d', strtotime('+30 days')));
         $reservationsByRoom = [];
@@ -72,7 +72,7 @@ class RoomsController extends Controller
 
     public function updateStatus(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'service_agent', 'housekeeping']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'service_agent', 'receptionist', 'housekeeping']);
         
         $roomId = (int)$request->input('room_id');
         $status = $request->input('status');
@@ -90,7 +90,7 @@ class RoomsController extends Controller
 
     public function selectEdit(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager']);
 
         $allRooms = $this->rooms->all();
         $roomTypes = $this->roomTypes->all();
@@ -103,7 +103,7 @@ class RoomsController extends Controller
 
     public function editRoom(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager']);
 
         $roomId = (int)$request->input('room_id');
         $room = $this->rooms->find($roomId);
@@ -123,7 +123,7 @@ class RoomsController extends Controller
 
     public function updateRoom(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager']);
 
         $roomId = (int)$request->input('room_id');
         $room = $this->rooms->find($roomId);
@@ -172,7 +172,7 @@ class RoomsController extends Controller
 
     public function roomTypes(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager']);
 
         $roomTypes = $this->roomTypes->all();
 
@@ -183,7 +183,7 @@ class RoomsController extends Controller
 
     public function editRoomType(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager']);
 
         $roomTypeId = (int)$request->input('room_type_id');
         $roomType = $this->roomTypes->find($roomTypeId);
@@ -206,7 +206,7 @@ class RoomsController extends Controller
 
     public function updateRoomType(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager']);
 
         $roomTypeId = (int)$request->input('room_type_id');
         $roomType = $this->roomTypes->find($roomTypeId);
@@ -263,7 +263,7 @@ class RoomsController extends Controller
 
     public function createRoomType(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager']);
 
         if ($request->method() === 'POST') {
             $name = trim($request->input('name', ''));
@@ -309,7 +309,7 @@ class RoomsController extends Controller
 
     public function deleteRoomType(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager']);
 
         $roomTypeId = (int)$request->input('room_type_id');
         $deleted = $this->roomTypes->delete($roomTypeId);
@@ -324,7 +324,7 @@ class RoomsController extends Controller
 
     public function replaceRoomTypes(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager']);
 
         try {
             // Get all current room types

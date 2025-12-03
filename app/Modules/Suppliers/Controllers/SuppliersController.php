@@ -18,32 +18,51 @@ class SuppliersController extends Controller
 
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $search = $request->input('search', '');
-        $suppliers = $this->suppliers->all($search ?: null);
+        $category = $request->input('category', '');
+        $status = $request->input('status', '');
+        $group = $request->input('group', '');
+        
+        $suppliers = $this->suppliers->all(
+            $search ?: null,
+            $category ?: null,
+            $status ?: null,
+            $group ?: null
+        );
+
+        $groups = $this->suppliers->getGroups();
 
         $this->view('dashboard/suppliers/index', [
             'suppliers' => $suppliers,
             'search' => $search,
+            'category' => $category,
+            'status' => $status,
+            'group' => $group,
+            'groups' => $groups,
         ]);
     }
 
     public function create(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         if ($request->method() === 'POST') {
             $this->store($request);
             return;
         }
 
-        $this->view('dashboard/suppliers/create');
+        $groups = $this->suppliers->getGroups();
+        
+        $this->view('dashboard/suppliers/create', [
+            'groups' => $groups,
+        ]);
     }
 
     public function store(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $data = [
             'name' => trim($request->input('name', '')),
@@ -57,6 +76,8 @@ class SuppliersController extends Controller
             'payment_terms' => trim($request->input('payment_terms', '')),
             'notes' => trim($request->input('notes', '')),
             'status' => $request->input('status', 'active'),
+            'category' => $request->input('category', 'product_supplier'),
+            'supplier_group' => trim($request->input('supplier_group', '')) ?: null,
             'bank_name' => trim($request->input('bank_name', '')),
             'bank_account_number' => trim($request->input('bank_account_number', '')),
             'bank_branch' => trim($request->input('bank_branch', '')),
@@ -67,31 +88,31 @@ class SuppliersController extends Controller
         ];
 
         if (empty($data['name'])) {
-            header('Location: ' . base_url('dashboard/suppliers/create?error=' . urlencode('Supplier name is required')));
+            header('Location: ' . base_url('staff/dashboard/suppliers/create?error=' . urlencode('Supplier name is required')));
             return;
         }
 
         try {
             $id = $this->suppliers->create($data);
-            header('Location: ' . base_url('dashboard/suppliers?success=' . urlencode('Supplier created successfully')));
+            header('Location: ' . base_url('staff/dashboard/suppliers?success=' . urlencode('Supplier created successfully')));
         } catch (\Exception $e) {
-            header('Location: ' . base_url('dashboard/suppliers/create?error=' . urlencode('Failed to create supplier')));
+            header('Location: ' . base_url('staff/dashboard/suppliers/create?error=' . urlencode('Failed to create supplier')));
         }
     }
 
     public function edit(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $id = (int)$request->input('id');
         if (!$id) {
-            header('Location: ' . base_url('dashboard/suppliers?error=' . urlencode('Invalid supplier ID')));
+            header('Location: ' . base_url('staff/dashboard/suppliers?error=' . urlencode('Invalid supplier ID')));
             return;
         }
 
         $supplier = $this->suppliers->find($id);
         if (!$supplier) {
-            header('Location: ' . base_url('dashboard/suppliers?error=' . urlencode('Supplier not found')));
+            header('Location: ' . base_url('staff/dashboard/suppliers?error=' . urlencode('Supplier not found')));
             return;
         }
 
@@ -100,14 +121,17 @@ class SuppliersController extends Controller
             return;
         }
 
+        $groups = $this->suppliers->getGroups();
+        
         $this->view('dashboard/suppliers/edit', [
             'supplier' => $supplier,
+            'groups' => $groups,
         ]);
     }
 
     public function update(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $id = (int)$request->input('id');
         if (!$id) {
@@ -131,6 +155,8 @@ class SuppliersController extends Controller
             'payment_terms' => trim($request->input('payment_terms', '')),
             'notes' => trim($request->input('notes', '')),
             'status' => $request->input('status', 'active'),
+            'category' => $request->input('category', 'product_supplier'),
+            'supplier_group' => trim($request->input('supplier_group', '')) ?: null,
             'bank_name' => trim($request->input('bank_name', '')),
             'bank_account_number' => trim($request->input('bank_account_number', '')),
             'bank_branch' => trim($request->input('bank_branch', '')),
@@ -141,57 +167,59 @@ class SuppliersController extends Controller
         ];
 
         if (empty($data['name'])) {
-            header('Location: ' . base_url('dashboard/suppliers/edit?id=' . $id . '&error=' . urlencode('Supplier name is required')));
+            header('Location: ' . base_url('staff/dashboard/suppliers/edit?id=' . $id . '&error=' . urlencode('Supplier name is required')));
             return;
         }
 
         try {
             $this->suppliers->update($id, $data);
-            header('Location: ' . base_url('dashboard/suppliers?success=' . urlencode('Supplier updated successfully')));
+            header('Location: ' . base_url('staff/dashboard/suppliers?success=' . urlencode('Supplier updated successfully')));
         } catch (\Exception $e) {
-            header('Location: ' . base_url('dashboard/suppliers/edit?id=' . $id . '&error=' . urlencode('Failed to update supplier')));
+            header('Location: ' . base_url('staff/dashboard/suppliers/edit?id=' . $id . '&error=' . urlencode('Failed to update supplier')));
         }
     }
 
     public function delete(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $id = (int)$request->input('id');
         if (!$id) {
-            header('Location: ' . base_url('dashboard/suppliers?error=' . urlencode('Invalid supplier ID')));
+            header('Location: ' . base_url('staff/dashboard/suppliers?error=' . urlencode('Invalid supplier ID')));
             return;
         }
 
         $deleted = $this->suppliers->delete($id);
         if ($deleted) {
-            header('Location: ' . base_url('dashboard/suppliers?success=' . urlencode('Supplier deleted successfully')));
+            header('Location: ' . base_url('staff/dashboard/suppliers?success=' . urlencode('Supplier deleted successfully')));
         } else {
-            header('Location: ' . base_url('dashboard/suppliers?error=' . urlencode('Cannot delete supplier with purchase orders')));
+            header('Location: ' . base_url('staff/dashboard/suppliers?error=' . urlencode('Cannot delete supplier with purchase orders')));
         }
     }
 
     public function show(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $id = (int)$request->input('id');
         if (!$id) {
-            header('Location: ' . base_url('dashboard/suppliers?error=' . urlencode('Invalid supplier ID')));
+            header('Location: ' . base_url('staff/dashboard/suppliers?error=' . urlencode('Invalid supplier ID')));
             return;
         }
 
         $supplier = $this->suppliers->find($id);
         if (!$supplier) {
-            header('Location: ' . base_url('dashboard/suppliers?error=' . urlencode('Supplier not found')));
+            header('Location: ' . base_url('staff/dashboard/suppliers?error=' . urlencode('Supplier not found')));
             return;
         }
 
         $purchaseOrders = $this->suppliers->getPurchaseOrders($id);
+        $performanceHistory = $this->suppliers->getPerformanceHistory($id, 10);
 
         $this->view('dashboard/suppliers/show', [
             'supplier' => $supplier,
             'purchaseOrders' => $purchaseOrders,
+            'performanceHistory' => $performanceHistory,
         ]);
     }
 }

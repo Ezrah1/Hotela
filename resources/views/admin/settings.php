@@ -1,6 +1,7 @@
 <?php
 
 $tabs = [
+    'general' => 'General',
     'branding' => 'Branding',
     'pos' => 'POS Settings',
     'hotel' => 'Hotel Settings',
@@ -14,7 +15,17 @@ $tabs = [
 ];
 
 $activeTab = $_GET['tab'] ?? 'branding';
-$roleConfig = config('roles.admin');
+// Get the actual user's role config, not hardcoded admin
+use App\Support\Auth;
+$user = Auth::user();
+$userRoleKey = $user['role_key'] ?? ($user['role'] ?? null);
+$allRoles = config('roles', []);
+// If user has deprecated 'admin' role, use 'director' config instead
+if ($userRoleKey === 'admin') {
+    $roleConfig = $allRoles['director'] ?? [];
+} else {
+    $roleConfig = $allRoles[$userRoleKey] ?? [];
+}
 
 ob_start();
 ?>
@@ -36,6 +47,11 @@ ob_start();
                         <h3>Payment Gateways</h3>
                         <p>Configure payment methods for your platform.</p>
                     </header>
+                    <?php if (isset($_GET['success']) && $_GET['tab'] === $key): ?>
+                        <div class="alert alert-success" style="margin: 1rem 0; padding: 0.75rem 1rem; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 0.5rem;">
+                            <?= htmlspecialchars($_GET['success']); ?>
+                        </div>
+                    <?php endif; ?>
                     <?php
                     $gateway = $_GET['gateway'] ?? 'mpesa';
                     $gatewaySettings = $settings['payment_gateways'][$gateway] ?? [];

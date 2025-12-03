@@ -8,8 +8,8 @@ ob_start();
 <section class="card">
     <header class="employee-header">
         <div>
-            <h2><?= htmlspecialchars($user['name']); ?></h2>
-            <p class="employee-subtitle"><?= htmlspecialchars($user['email']); ?> • <?= htmlspecialchars($user['role_name'] ?? $user['role_key']); ?></p>
+            <h2><?= htmlspecialchars($employee['name'] ?? $user['name'] ?? 'Employee'); ?></h2>
+            <p class="employee-subtitle"><?= htmlspecialchars($employee['email'] ?? $user['email'] ?? ''); ?> • <?= htmlspecialchars($employee['role_name'] ?? $employee['role_key'] ?? $user['role_name'] ?? $user['role_key'] ?? ''); ?></p>
         </div>
         <a class="btn btn-ghost" href="<?= base_url('staff/dashboard/hr'); ?>">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -45,7 +45,7 @@ ob_start();
         </div>
 
         <form id="add-record-form" method="post" action="<?= base_url('staff/dashboard/hr/employee/record'); ?>" style="display: none; margin-bottom: 1.5rem; padding: 1.5rem; background: #f8fafc; border-radius: 0.75rem; border: 1px solid #e2e8f0;">
-            <input type="hidden" name="user_id" value="<?= (int)$user['id']; ?>">
+            <input type="hidden" name="user_id" value="<?= (int)($employee['id'] ?? $user['id'] ?? 0); ?>">
             <div class="form-grid">
                 <label>
                     <span>Record Type *</span>

@@ -18,6 +18,9 @@ return [
     ['POST', '/guest/login', [GuestPortalController::class, 'authenticate']],
     ['POST', '/guest/logout', [GuestPortalController::class, 'logout']],
     ['GET', '/guest/portal', [GuestPortalController::class, 'dashboard']],
+    ['GET', '/guest/room-services', [GuestPortalController::class, 'roomServices']],
+    ['POST', '/guest/request-service', [GuestPortalController::class, 'requestService']],
+    ['POST', '/guest/toggle-dnd', [GuestPortalController::class, 'toggleDND']],
 ];
 
 

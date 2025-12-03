@@ -87,6 +87,37 @@ class GuestController extends Controller
         ]);
     }
 
+    public function conferencing(Request $request): void
+    {
+        $this->guardPage('conferencing');
+
+        $this->view('website/conferencing', [
+            'website' => settings('website', []),
+        ]);
+    }
+
+    public function events(Request $request): void
+    {
+        $this->guardPage('events');
+
+        $this->view('website/events', [
+            'website' => settings('website', []),
+        ]);
+    }
+
+    public function gallery(Request $request): void
+    {
+        $this->guardPage('gallery');
+
+        $galleryRepo = new \App\Repositories\GalleryRepository();
+        $items = $galleryRepo->allPublished();
+
+        $this->view('website/gallery', [
+            'website' => settings('website', []),
+            'items' => $items,
+        ]);
+    }
+
     public function order(Request $request): void
     {
         $this->guardPage('order');

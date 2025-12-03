@@ -77,7 +77,7 @@ ob_start();
                     <?php foreach ($availableRooms as $room): ?>
                         <?php if ((int)$room['room_type_id'] === (int)$reservation['room_type_id']): ?>
                             <option value="<?= (int)$room['id']; ?>" <?= (int)$room['id'] === (int)($reservation['room_id'] ?? 0) ? 'selected' : ''; ?>>
-                                <?= htmlspecialchars($room['display_name'] ?? $room['room_number']); ?> (<?= htmlspecialchars($room['room_type_name']); ?>)
+                                <?= htmlspecialchars($room['display_name'] ?? $room['room_number']); ?> (<?= htmlspecialchars($room['room_type_name'] ?? 'Room Type'); ?>)
                             </option>
                         <?php endif; ?>
                     <?php endforeach; ?>

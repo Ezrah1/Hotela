@@ -26,10 +26,17 @@ ob_start();
                 <?php endif; ?>
                 <div class="status-item">
                     <span class="status-label">Status:</span>
-                    <?php if ($todayAttendance['checked_in'] && !$todayAttendance['checked_out']): ?>
+                    <?php 
+                    $hasCheckIn = !empty($todayAttendance['check_in_time']);
+                    $hasCheckOut = !empty($todayAttendance['check_out_time']);
+                    $status = $todayAttendance['status'] ?? '';
+                    ?>
+                    <?php if ($hasCheckIn && !$hasCheckOut): ?>
                         <span class="status status-checked_in">Checked In</span>
-                    <?php elseif ($todayAttendance['checked_out']): ?>
+                    <?php elseif ($hasCheckOut): ?>
                         <span class="status status-checked_out">Checked Out</span>
+                    <?php elseif ($status === 'present'): ?>
+                        <span class="status status-checked_in">Present</span>
                     <?php else: ?>
                         <span class="status">Pending</span>
                     <?php endif; ?>
@@ -70,15 +77,25 @@ ob_start();
                 </thead>
                 <tbody>
                     <?php foreach ($history as $record): ?>
+                        <?php 
+                        $checkInTime = $record['check_in_time'] ?? null;
+                        $checkOutTime = $record['check_out_time'] ?? null;
+                        $hasCheckIn = !empty($checkInTime);
+                        $hasCheckOut = !empty($checkOutTime);
+                        $status = $record['status'] ?? '';
+                        $date = $checkInTime ? date('Y-m-d', strtotime($checkInTime)) : date('Y-m-d');
+                        ?>
                         <tr>
-                            <td><?= date('M j, Y', strtotime($record['date'])); ?></td>
-                            <td><?= date('H:i', strtotime($record['check_in_time'])); ?></td>
-                            <td><?= $record['check_out_time'] ? date('H:i', strtotime($record['check_out_time'])) : '--'; ?></td>
+                            <td><?= $checkInTime ? date('M j, Y', strtotime($checkInTime)) : 'N/A'; ?></td>
+                            <td><?= $checkInTime ? date('H:i', strtotime($checkInTime)) : '--'; ?></td>
+                            <td><?= $checkOutTime ? date('H:i', strtotime($checkOutTime)) : '--'; ?></td>
                             <td>
-                                <?php if ($record['checked_in'] && !$record['checked_out']): ?>
+                                <?php if ($hasCheckIn && !$hasCheckOut): ?>
                                     <span class="status status-checked_in">Checked In</span>
-                                <?php elseif ($record['checked_out']): ?>
+                                <?php elseif ($hasCheckOut): ?>
                                     <span class="status status-checked_out">Checked Out</span>
+                                <?php elseif ($status === 'present'): ?>
+                                    <span class="status status-checked_in">Present</span>
                                 <?php else: ?>
                                     <span class="status">Pending</span>
                                 <?php endif; ?>

@@ -24,8 +24,47 @@ class CashShiftRepository
         return $stmt->fetch() ?: null;
     }
 
+    /**
+     * Get or create a shift for a user/date
+     * Returns existing shift if found, creates new one if not
+     */
+    public function getOrCreateShift(int $userId, string $date): array
+    {
+        // First check for existing shift (any status)
+        $stmt = $this->db->prepare('
+            SELECT * FROM pos_shifts 
+            WHERE user_id = :user_id AND shift_date = :date
+            LIMIT 1
+        ');
+        $stmt->execute(['user_id' => $userId, 'date' => $date]);
+        $shift = $stmt->fetch();
+        
+        if ($shift) {
+            return $shift;
+        }
+        
+        // No shift exists, create one
+        $shiftId = $this->create($userId, $date);
+        return $this->findById($shiftId) ?? [];
+    }
+
     public function create(int $userId, string $date): int
     {
+        // Check if a shift already exists for this user/date (open or closed)
+        $stmt = $this->db->prepare('
+            SELECT id FROM pos_shifts 
+            WHERE user_id = :user_id AND shift_date = :date
+            LIMIT 1
+        ');
+        $stmt->execute(['user_id' => $userId, 'date' => $date]);
+        $existing = $stmt->fetch();
+        
+        if ($existing) {
+            // Shift already exists, return its ID
+            return (int)$existing['id'];
+        }
+        
+        // Create new shift
         $stmt = $this->db->prepare('
             INSERT INTO pos_shifts (user_id, shift_date, status)
             VALUES (:user_id, :date, "open")

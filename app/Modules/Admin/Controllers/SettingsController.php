@@ -18,7 +18,7 @@ class SettingsController extends Controller
 
     public function index(): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
         $this->view('admin/settings', [
             'settings' => $this->store->all(),
             'pageTitle' => 'Admin Settings | Hotela',
@@ -27,7 +27,7 @@ class SettingsController extends Controller
 
     public function update(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
         $group = $request->input('group');
         $payload = $request->all();
         unset($payload['group']);
@@ -38,6 +38,23 @@ class SettingsController extends Controller
             return;
         }
 
+        // Handle system_settings table (general group)
+        if ($group === 'general') {
+            $systemRepo = new \App\Repositories\SystemSettingsRepository();
+            
+            foreach ($payload as $key => $value) {
+                $systemRepo->set($key, $value);
+            }
+            
+            // Update PHP timezone if timezone setting was changed
+            if (isset($payload['timezone'])) {
+                date_default_timezone_set($payload['timezone']);
+            }
+            
+            header('Location: ' . base_url('staff/admin/settings?tab=' . urlencode($group) . '&success=' . urlencode('Settings updated successfully')));
+            return;
+        }
+        
         // Handle image uploads for website settings
         if ($group === 'website') {
             $uploadService = new \App\Services\FileUploadService();
@@ -65,6 +82,26 @@ class SettingsController extends Controller
                     // Silently fail, keep existing value
                 }
             }
+            
+            // Handle enabled_payment_methods array
+            if (isset($payload['enabled_payment_methods']) && is_array($payload['enabled_payment_methods'])) {
+                // Convert array to list of enabled method keys
+                $enabledMethods = [];
+                foreach ($payload['enabled_payment_methods'] as $methodKey => $enabled) {
+                    if ($enabled == '1' || $enabled === true) {
+                        $enabledMethods[] = $methodKey;
+                    }
+                }
+                // Ensure cash is always enabled
+                if (!in_array('cash', $enabledMethods)) {
+                    $enabledMethods[] = 'cash';
+                }
+                // Ensure at least cash is enabled (shouldn't be needed, but safety check)
+                if (empty($enabledMethods)) {
+                    $enabledMethods = ['cash'];
+                }
+                $payload['enabled_payment_methods'] = $enabledMethods;
+            }
         }
 
         $sanitized = $this->sanitizeValues($payload);
@@ -78,6 +115,10 @@ class SettingsController extends Controller
             if (is_array($value)) {
                 // Special case: pages array should be part of website group
                 if ($group === 'website' && $key === 'pages') {
+                    $mainGroup[$key] = $value;
+                } 
+                // Special case: enabled_payment_methods array should be part of website group
+                elseif ($group === 'website' && $key === 'enabled_payment_methods') {
                     $mainGroup[$key] = $value;
                 } else {
                     // This is a nested group (e.g., payslip[enabled])
@@ -104,7 +145,7 @@ class SettingsController extends Controller
 
     public function uploadImage(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
         
         header('Content-Type: application/json');
         

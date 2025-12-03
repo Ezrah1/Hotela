@@ -125,17 +125,47 @@ ob_start();
         </div>
 
         <div class="form-section">
+            <h3 class="section-title">Classification</h3>
+            <div class="form-grid">
+                <label class="form-group required">
+                    <span>Category</span>
+                    <select name="category" class="modern-select" required>
+                        <option value="product_supplier" <?= ($supplier['category'] ?? 'product_supplier') === 'product_supplier' ? 'selected' : ''; ?>>Product Supplier</option>
+                        <option value="service_provider" <?= ($supplier['category'] ?? 'product_supplier') === 'service_provider' ? 'selected' : ''; ?>>Service Provider</option>
+                        <option value="both" <?= ($supplier['category'] ?? 'product_supplier') === 'both' ? 'selected' : ''; ?>>Both (Products & Services)</option>
+                    </select>
+                    <small style="color: #64748b; font-size: 0.875rem; margin-top: 0.25rem;">Service providers are for maintenance/repair work, product suppliers are for inventory items</small>
+                </label>
+                <label class="form-group">
+                    <span>Supplier Group</span>
+                    <input type="text" name="supplier_group" class="modern-input" value="<?= htmlspecialchars($supplier['supplier_group'] ?? ''); ?>" placeholder="e.g., Food & Beverage, Maintenance, Office Supplies" list="supplier-groups">
+                    <datalist id="supplier-groups">
+                        <?php if (!empty($groups)): ?>
+                            <?php foreach ($groups as $group): ?>
+                                <option value="<?= htmlspecialchars($group); ?>">
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </datalist>
+                    <small style="color: #64748b; font-size: 0.875rem; margin-top: 0.25rem;">Optional: Group suppliers by type or department</small>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-section">
             <h3 class="section-title">Additional Information</h3>
             <label class="form-group">
                 <span>Notes</span>
                 <textarea name="notes" class="modern-input" rows="4" placeholder="Additional notes about this supplier"><?= htmlspecialchars($supplier['notes'] ?? ''); ?></textarea>
             </label>
-            <label class="form-group">
+            <label class="form-group required">
                 <span>Status</span>
-                <select name="status" class="modern-select">
+                <select name="status" class="modern-select" required>
                     <option value="active" <?= ($supplier['status'] ?? 'active') === 'active' ? 'selected' : ''; ?>>Active</option>
+                    <option value="suspended" <?= ($supplier['status'] ?? 'active') === 'suspended' ? 'selected' : ''; ?>>Suspended</option>
+                    <option value="blacklisted" <?= ($supplier['status'] ?? 'active') === 'blacklisted' ? 'selected' : ''; ?>>Blacklisted</option>
                     <option value="inactive" <?= ($supplier['status'] ?? 'active') === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
                 </select>
+                <small style="color: #64748b; font-size: 0.875rem; margin-top: 0.25rem;">Suspended: Temporarily not accepting orders. Blacklisted: Permanently excluded from orders.</small>
             </label>
         </div>
 

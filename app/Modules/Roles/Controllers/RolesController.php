@@ -10,11 +10,12 @@ class RolesController extends Controller
 {
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
 
-        // Get all roles from config (exclude super_admin from tenant view)
+        // Get all roles from config (exclude super_admin and admin from tenant view)
         $rolesConfig = config('roles', []);
         unset($rolesConfig['super_admin']); // Don't show super_admin to tenant admins
+        unset($rolesConfig['admin']); // Don't show deprecated admin role to tenant admins
         
         // Get role counts from database (tenant-scoped)
         
@@ -40,11 +41,17 @@ class RolesController extends Controller
 
     public function editRole(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
 
         $roleKey = $request->input('role');
         if (!$roleKey) {
             header('Location: ' . base_url('dashboard/roles?error=Invalid%20role'));
+            return;
+        }
+
+        // Prevent editing of deprecated admin role or super_admin
+        if ($roleKey === 'admin' || $roleKey === 'super_admin') {
+            header('Location: ' . base_url('staff/dashboard/roles?error=This%20role%20cannot%20be%20edited'));
             return;
         }
 
@@ -86,13 +93,19 @@ class RolesController extends Controller
 
     public function updateRole(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
 
         $roleKey = $request->input('role_key');
         $permissions = $request->input('permissions', []);
         
         if (!$roleKey) {
             header('Location: ' . base_url('dashboard/roles?error=Invalid%20role'));
+            return;
+        }
+
+        // Prevent updating of deprecated admin role or super_admin
+        if ($roleKey === 'admin' || $roleKey === 'super_admin') {
+            header('Location: ' . base_url('staff/dashboard/roles?error=This%20role%20cannot%20be%20updated'));
             return;
         }
 

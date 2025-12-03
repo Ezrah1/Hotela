@@ -81,10 +81,16 @@ $poweredByEnabled = ($website['powered_by_hotela'] ?? true) !== false;
                     <a href="<?= base_url('rooms'); ?>">Rooms</a>
                 <?php endif; ?>
                 <?php if (!empty($pages['food'])): ?>
-                    <a href="<?= base_url('drinks-food'); ?>">Dining</a>
+                    <a href="<?= base_url('drinks-food'); ?>">Dine & Drink</a>
                 <?php endif; ?>
-                <?php if (!empty($pages['about'])): ?>
-                    <a href="<?= base_url('about'); ?>">About</a>
+                <?php if (!empty($pages['conferencing'])): ?>
+                    <a href="<?= base_url('conferencing'); ?>">Conferencing</a>
+                <?php endif; ?>
+                <?php if (!empty($pages['events'])): ?>
+                    <a href="<?= base_url('events'); ?>">Events</a>
+                <?php endif; ?>
+                <?php if (!empty($pages['gallery'])): ?>
+                    <a href="<?= base_url('gallery'); ?>">Gallery</a>
                 <?php endif; ?>
                 <?php if (!empty($pages['contact'])): ?>
                     <a href="<?= base_url('contact'); ?>">Contact</a>
@@ -103,7 +109,7 @@ $poweredByEnabled = ($website['powered_by_hotela'] ?? true) !== false;
                     <a class="nav-account" href="<?= base_url('guest/login'); ?>">Account</a>
                 <?php } ?>
                 <?php if ($bookingEnabled): ?>
-                    <a class="btn btn-primary btn-small" href="<?= $bookingLink; ?>">Book Now</a>
+                    <button type="button" class="btn btn-primary btn-small" id="bookNowBtn">Book Now</button>
                 <?php endif; ?>
             </div>
         </nav>
@@ -131,11 +137,11 @@ $poweredByEnabled = ($website['powered_by_hotela'] ?? true) !== false;
                 <?php if (!empty($pages['rooms'])): ?>
                     <li><a href="<?= base_url('rooms'); ?>">Rooms</a></li>
                 <?php endif; ?>
+                <?php if (!empty($pages['about'])): ?>
+                    <li><a href="<?= base_url('about'); ?>">About</a></li>
+                <?php endif; ?>
                 <?php if (!empty($pages['contact'])): ?>
                     <li><a href="<?= base_url('contact'); ?>">Contact</a></li>
-                <?php endif; ?>
-                <?php if (!empty($pages['order'])): ?>
-                    <li><a href="<?= $orderLink; ?>">Order | Booking</a></li>
                 <?php endif; ?>
                 <?php if ($footerLinks): ?>
                     <?php foreach ($footerLinks as $link): ?>
@@ -174,6 +180,85 @@ $poweredByEnabled = ($website['powered_by_hotela'] ?? true) !== false;
         <?php endif; ?>
     </div>
 </footer>
+
+<?php if ($bookingEnabled): ?>
+<!-- Booking Form Modal -->
+<div id="bookingModal" class="booking-panel">
+    <div class="booking-panel__backdrop" data-close-booking></div>
+    <div class="booking-panel__card">
+        <button class="booking-panel__close" type="button" data-close-booking aria-label="Close booking form">&times;</button>
+        <div class="booking-panel__step is-active">
+            <h2>Book Your Stay</h2>
+            <p>Enter your dates and guest details to check availability.</p>
+            <form method="get" action="<?= base_url('booking'); ?>" id="quickBookingForm">
+                <div class="form-grid">
+                    <label>
+                        <span>Check-in</span>
+                        <input type="date" name="check_in" min="<?= date('Y-m-d'); ?>" value="<?= date('Y-m-d', strtotime('+1 day')); ?>" required>
+                    </label>
+                    <label>
+                        <span>Check-out</span>
+                        <input type="date" name="check_out" min="<?= date('Y-m-d', strtotime('+2 days')); ?>" value="<?= date('Y-m-d', strtotime('+2 days')); ?>" required>
+                    </label>
+                    <label>
+                        <span>Adults</span>
+                        <input type="number" name="adults" min="1" value="2" required>
+                    </label>
+                    <label>
+                        <span>Children</span>
+                        <input type="number" name="children" min="0" value="0">
+                    </label>
+                </div>
+                <button class="btn btn-primary btn-full" type="submit">Check Availability</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bookNowBtn = document.getElementById('bookNowBtn');
+    const bookingModal = document.getElementById('bookingModal');
+    const closeButtons = bookingModal?.querySelectorAll('[data-close-booking]');
+    
+    if (bookNowBtn && bookingModal) {
+        bookNowBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            bookingModal.classList.add('is-visible');
+            document.body.classList.add('no-scroll');
+        });
+    }
+    
+    if (closeButtons) {
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                bookingModal.classList.remove('is-visible');
+                document.body.classList.remove('no-scroll');
+            });
+        });
+    }
+    
+    // Close on backdrop click
+    if (bookingModal) {
+        bookingModal.addEventListener('click', function(e) {
+            if (e.target === bookingModal.querySelector('.booking-panel__backdrop')) {
+                bookingModal.classList.remove('is-visible');
+                document.body.classList.remove('no-scroll');
+            }
+        });
+    }
+    
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && bookingModal?.classList.contains('is-visible')) {
+            bookingModal.classList.remove('is-visible');
+            document.body.classList.remove('no-scroll');
+        }
+    });
+});
+</script>
+<?php endif; ?>
+
 </body>
 </html>
 

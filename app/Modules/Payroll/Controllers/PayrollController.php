@@ -18,7 +18,7 @@ class PayrollController extends Controller
 
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $period = $request->input('period', date('Y-m'));
         $status = $request->input('status', '');
@@ -39,7 +39,7 @@ class PayrollController extends Controller
 
     public function generate(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $period = $request->input('period', date('Y-m'));
         $periodParts = explode('-', $period);
@@ -67,7 +67,7 @@ class PayrollController extends Controller
 
     public function update(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $payrollId = (int)$request->input('payroll_id');
         $basicSalary = (float)$request->input('basic_salary', 0);
@@ -115,7 +115,7 @@ class PayrollController extends Controller
 
     public function edit(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $payrollId = (int)$request->input('id');
         if (!$payrollId) {

@@ -277,10 +277,64 @@ $nights = max(1, $checkIn->diff($checkOut)->days);
         </div>
 
         <div class="actions">
-            <button onclick="window.print()" class="btn btn-primary">Print Confirmation</button>
+            <a href="<?= base_url('booking/confirmation?reference=' . urlencode($reservation['reference'] ?? '') . '&print=1'); ?>" class="btn btn-primary" target="_blank">Print Receipt</a>
+            <a href="<?= base_url('guest/booking?ref=' . urlencode($reservation['reference'] ?? '') . '&download=receipt'); ?>" class="btn btn-primary" target="_blank">Download Receipt</a>
             <a href="<?= base_url('guest/portal'); ?>" class="btn btn-outline">View My Bookings</a>
         </div>
     </div>
+    
+    <?php if ($isMpesaPending): ?>
+    <script>
+        // Real-time payment status polling for M-Pesa payments
+        (function() {
+            const reference = '<?= htmlspecialchars($reservation['reference'] ?? ''); ?>';
+            if (!reference) return;
+            
+            let pollCount = 0;
+            const maxPolls = 60; // Poll for up to 5 minutes (60 * 5 seconds)
+            let pollInterval;
+            
+            function checkPaymentStatus() {
+                pollCount++;
+                
+                if (pollCount > maxPolls) {
+                    clearInterval(pollInterval);
+                    return;
+                }
+                
+                fetch('<?= base_url('api/booking/payment-status'); ?>?reference=' + encodeURIComponent(reference))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const paymentStatus = data.payment_status;
+                            const mpesaStatus = data.mpesa_status;
+                            const bookingStatus = data.booking_status;
+                            
+                            // Check if payment status changed
+                            if (paymentStatus === 'paid' || mpesaStatus === 'completed') {
+                                // Payment confirmed - reload page to show updated status
+                                clearInterval(pollInterval);
+                                window.location.reload();
+                            } else if (mpesaStatus === 'failed' || mpesaStatus === 'cancelled') {
+                                // Payment failed - reload page to show updated status
+                                clearInterval(pollInterval);
+                                window.location.reload();
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking payment status:', error);
+                    });
+            }
+            
+            // Start polling every 5 seconds
+            pollInterval = setInterval(checkPaymentStatus, 5000);
+            
+            // Also check immediately
+            checkPaymentStatus();
+        })();
+    </script>
+    <?php endif; ?>
 </body>
 </html>
 

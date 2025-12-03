@@ -155,15 +155,40 @@ ob_start();
             <div class="filter-inputs">
                 <label>
                     <span>Category</span>
-                    <select name="category" class="filter-select">
-                        <option value="">All Categories</option>
-                        <?php foreach (($categories ?? []) as $cat): ?>
-                            <option value="<?= htmlspecialchars($cat); ?>" <?= ($activeCategory ?? '') === $cat ? 'selected' : ''; ?>>
-                                <?= htmlspecialchars($cat); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select name="category" class="filter-select" style="flex: 1;">
+                            <option value="">All Categories</option>
+                            <?php foreach (($categories ?? []) as $cat): ?>
+                                <option value="<?= htmlspecialchars($cat); ?>" <?= ($activeCategory ?? '') === $cat ? 'selected' : ''; ?>>
+                                    <?= htmlspecialchars($cat); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if (!empty($canManageCategories ?? false)): ?>
+                            <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('add-category-form').classList.toggle('is-open')" title="Add Category" style="flex-shrink: 0;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                            </button>
+                        <?php endif; ?>
+                    </div>
                 </label>
+                <?php if (!empty($canManageCategories ?? false)): ?>
+                    <div class="add-category-form" id="add-category-form" style="display: none; margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
+                        <form method="post" action="<?= base_url('staff/dashboard/inventory/category/create'); ?>" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                            <label style="flex: 1;">
+                                <span style="display: block; margin-bottom: 0.25rem; font-size: 0.875rem; color: #64748b; font-weight: 500;">New Category Name</span>
+                                <input type="text" name="category_name" required placeholder="e.g., Beverages, Cleaning Supplies" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.375rem;">
+                            </label>
+                            <button type="submit" class="btn btn-primary btn-small">Add</button>
+                            <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('add-category-form').classList.remove('is-open')">Cancel</button>
+                        </form>
+                        <small style="display: block; margin-top: 0.5rem; color: #64748b; font-size: 0.75rem;">
+                            Note: Category will appear in the dropdown once created. You can assign items to this category when creating or editing inventory items.
+                        </small>
+                    </div>
+                <?php endif; ?>
                 <label>
                     <span>Search</span>
                     <input type="text" name="q" value="<?= htmlspecialchars($search ?? ''); ?>" placeholder="Search by name or SKU..." class="filter-input">
@@ -240,11 +265,31 @@ ob_start();
                         </td>
                         <td>
                             <div class="stock-cell">
-                                <span class="stock-value <?= $low ? 'stock-low' : 'stock-ok'; ?>">
-                                    <?= number_format($stock, 2); ?>
-                                </span>
-                                <?php if ($low): ?>
-                                    <span class="low-stock-indicator" title="Low stock - below reorder point">⚠</span>
+                                <div class="stock-main">
+                                    <span class="stock-value <?= $low ? 'stock-low' : 'stock-ok'; ?>">
+                                        <?= number_format($stock, 2); ?> <?= htmlspecialchars($row['unit'] ?? ''); ?>
+                                    </span>
+                                    <?php if ($low): ?>
+                                        <span class="low-stock-indicator" title="Low stock - below reorder point">⚠</span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if (!empty($row['stock_by_location'] ?? [])): ?>
+                                    <div class="stock-locations">
+                                        <?php foreach ($row['stock_by_location'] as $loc): ?>
+                                            <span class="location-stock" title="Available at <?= htmlspecialchars($loc['location_name'] ?? ''); ?>">
+                                                <?= htmlspecialchars($loc['location_name'] ?? ''); ?>: 
+                                                <strong><?= number_format((float)$loc['quantity'], 2); ?></strong>
+                                            </span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php elseif ($stock > 0): ?>
+                                    <div class="stock-locations">
+                                        <span class="location-stock">Total: <?= number_format($stock, 2); ?> <?= htmlspecialchars($row['unit'] ?? ''); ?></span>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="stock-locations">
+                                        <span class="location-stock empty">No stock available</span>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         </td>
@@ -604,6 +649,25 @@ ob_start();
     color: #475569;
 }
 
+.add-category-form.is-open {
+    display: block !important;
+}
+
+.add-category-form {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .category-tag {
     display: inline-block;
     padding: 0.25rem 0.625rem;
@@ -615,6 +679,12 @@ ob_start();
 }
 
 .stock-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stock-main {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -636,6 +706,33 @@ ob_start();
 .low-stock-indicator {
     font-size: 1.125rem;
     color: #ef4444;
+}
+
+.stock-locations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.location-stock {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: #f1f5f9;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.location-stock strong {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.location-stock.empty {
+    color: #94a3b8;
+    font-style: italic;
 }
 
 .empty-state {

@@ -44,12 +44,22 @@ foreach ($files as $file) {
         $hasErrors = false;
         foreach ($statements as $sql) {
             try {
+                // Skip empty or comment-only SQL statements
+                if (trim($sql) === '' || str_starts_with(trim($sql), '--')) {
+                    continue;
+                }
                 $pdo->exec($sql);
             } catch (Throwable $e) {
                 // For tenant removal migration, continue on errors (columns/indexes may not exist)
                 if (str_contains($name, 'remove_tenant_system')) {
                     $hasErrors = true;
                     echo "  Warning: {$e->getMessage()}\n";
+                    continue;
+                }
+                // For audit columns migration, skip if columns already exist
+                if (str_contains($name, 'add_audit_columns') && str_contains($e->getMessage(), 'Duplicate column')) {
+                    $hasErrors = true;
+                    echo "  Warning: {$e->getMessage()} (skipping)\n";
                     continue;
                 }
                 throw $e;

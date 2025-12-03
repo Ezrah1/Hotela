@@ -22,7 +22,7 @@ return [
     // Create payment_transactions table for comprehensive payment tracking
     "CREATE TABLE IF NOT EXISTS payment_transactions (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        transaction_type ENUM('pos_sale', 'booking', 'other') NOT NULL,
+        transaction_type ENUM('pos_sale', 'booking', 'other', 'folio_payment') NOT NULL,
         reference_id INT NOT NULL,
         reference_code VARCHAR(50) NULL,
         payment_method VARCHAR(20) NOT NULL,

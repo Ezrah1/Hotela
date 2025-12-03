@@ -9,7 +9,7 @@ class SysAuth
         return !empty($_SESSION['sysadmin']);
     }
 
-    public static void require(): void
+    public static function require(): void
     {
         if (!self::check()) {
             header('Location: ' . base_url('sysadmin/login'));

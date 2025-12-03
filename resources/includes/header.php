@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php $assetVersion = '?v=20251117-pos'; ?>
+    <?php 
+    // Use file modification time for cache busting - ensures fresh CSS on updates
+    $cssPath = BASE_PATH . '/public/assets/css/main.css';
+    $cssVersion = file_exists($cssPath) ? '?v=' . filemtime($cssPath) : '?v=' . time();
+    ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $pageTitle ?? 'Hotela'; ?></title>
-    <link rel="stylesheet" href="<?= asset('css/main.css' . $assetVersion); ?>">
+    <link rel="stylesheet" href="<?= asset('css/main.css' . $cssVersion); ?>">
     <link rel="icon" href="<?= asset('assets/img/favicon.svg'); ?>" type="image/svg+xml">
 </head>
 <body>

@@ -24,11 +24,17 @@ class LoginController extends Controller
 
     public function authenticate(Request $request): void
     {
-        $email = trim($request->input('email', ''));
+        $username = trim($request->input('username', ''));
         $password = $request->input('password', '');
         $redirect = $request->input('redirect', '/staff/dashboard');
 
-        if (!Auth::attempt($email, $password)) {
+        if (empty($username)) {
+            $_SESSION['auth_error'] = 'Username is required';
+            header('Location: ' . base_url('staff/login?redirect=' . urlencode($redirect)));
+            return;
+        }
+
+        if (!Auth::attempt($username, $password)) {
             $_SESSION['auth_error'] = 'Invalid credentials';
             header('Location: ' . base_url('staff/login?redirect=' . urlencode($redirect)));
             return;
@@ -36,7 +42,7 @@ class LoginController extends Controller
 
         // Get user after successful authentication
         $userRepo = new \App\Repositories\UserRepository();
-        $user = $userRepo->findByEmail($email);
+        $user = $userRepo->findByUsernameOrEmail($username);
         
         if (!$user) {
             Auth::logout();
@@ -45,9 +51,9 @@ class LoginController extends Controller
             return;
         }
 
-        // Check attendance requirements
+        // Check attendance requirements (only for non-exempt roles)
         $role = $user['role_key'] ?? '';
-        $exemptRoles = ['admin', 'director', 'tech_admin'];
+        $exemptRoles = ['admin', 'director', 'tech_admin', 'security']; // Admin, Director, Tech Admin, and Security staff don't need check-in
         
         if (!in_array($role, $exemptRoles, true)) {
             // Regular employees must have attendance check-in
@@ -78,11 +84,6 @@ class LoginController extends Controller
                 header('Location: ' . base_url('staff/login?redirect=' . urlencode($redirect)));
                 return;
             }
-            
-            // Mark override as used if it exists
-            if ($override) {
-                $overrideRepo->markAsUsed($override['id']);
-            }
         }
 
         // Update last_login_at timestamp
@@ -95,8 +96,20 @@ class LoginController extends Controller
 
     public function logout(): void
     {
+        // Clear tenant session
         Auth::logout();
-        header('Location: ' . base_url('staff/login'));
+        
+        // Also clear any system admin session if present (shouldn't be, but be thorough)
+        if (isset($_SESSION['system_admin_id'])) {
+            unset($_SESSION['system_admin_id']);
+        }
+        
+        // Destroy session completely for security
+        session_destroy();
+        session_start();
+        
+        header('Location: ' . base_url('staff/login?logged_out=1'));
+        exit;
     }
 }
 

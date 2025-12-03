@@ -27,18 +27,21 @@ class CashBankingController extends Controller
 
     public function index(): void
     {
-        Auth::requireRoles(['admin', 'finance_manager', 'cashier']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager', 'cashier']);
 
         $user = Auth::user();
         $today = date('Y-m-d');
         
-        // Get current user's open shift
+        // Get current user's shift (get or create)
         $openShift = $this->shifts->getOpenShift((int)$user['id'], $today);
         
-        // If no open shift, create one
+        // If no open shift exists, get or create one (will return existing closed shift if present)
         if (!$openShift) {
-            $shiftId = $this->shifts->create((int)$user['id'], $today);
-            $openShift = $this->shifts->findById($shiftId);
+            $shift = $this->shifts->getOrCreateShift((int)$user['id'], $today);
+            // Only use it if it's open
+            if ($shift && ($shift['status'] ?? '') === 'open') {
+                $openShift = $shift;
+            }
         }
 
         // Calculate cash from POS sales and booking payments
@@ -76,7 +79,7 @@ class CashBankingController extends Controller
 
     public function closeShift(Request $request): void
     {
-        Auth::requireRoles(['admin', 'cashier']);
+        Auth::requireRoles(['director', 'admin', 'cashier']);
 
         $user = Auth::user();
         $shiftId = (int)$request->input('shift_id');
@@ -107,7 +110,7 @@ class CashBankingController extends Controller
 
     public function createBatch(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $date = $request->input('date', date('Y-m-d'));
         $shiftIds = $request->input('shift_ids', []);
@@ -127,7 +130,7 @@ class CashBankingController extends Controller
 
     public function batch(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $batchId = (int)$request->input('id');
         $batch = $this->banking->findById($batchId);
@@ -163,7 +166,7 @@ class CashBankingController extends Controller
 
     public function reconcile(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $batchId = (int)$request->input('batch_id');
         $cashDeclared = (float)$request->input('cash_declared', 0);
@@ -193,7 +196,7 @@ class CashBankingController extends Controller
 
     public function approveReconciliation(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $reconciliationId = (int)$request->input('reconciliation_id');
 
@@ -209,7 +212,7 @@ class CashBankingController extends Controller
 
     public function markBanked(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $batchId = (int)$request->input('batch_id');
         $notes = trim($request->input('notes', ''));
@@ -242,7 +245,7 @@ class CashBankingController extends Controller
 
     public function unbankedShifts(): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $shifts = $this->shifts->getUnbankedShifts();
         $shiftsByDate = [];

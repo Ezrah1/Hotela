@@ -46,6 +46,33 @@ class SalesReportController extends Controller
 		]);
 	}
 
+	public function dailySales(Request $request): void
+	{
+		Auth::requireRoles(['admin', 'finance_manager', 'operation_manager', 'director', 'cashier']);
+
+		// Default to today's date for daily sales report
+		$date = $this->sanitizeDate($request->input('date')) ?? date('Y-m-d');
+		$start = $date;
+		$end = $date;
+
+		$summary = $this->reports->summary($start, $end);
+		$payments = $this->reports->paymentBreakdown($start, $end);
+		$trend = $this->reports->trend($start, $end);
+		$topItems = $this->reports->topItems($start, $end, 10);
+		$topStaff = $this->reports->topStaff($start, $end, 10);
+
+		$this->view('dashboard/reports/daily-sales', [
+			'filters' => [
+				'date' => $date,
+			],
+			'summary' => $summary,
+			'payments' => $payments,
+			'trend' => $trend,
+			'topItems' => $topItems,
+			'topStaff' => $topStaff,
+		]);
+	}
+
 	protected function sanitizeDate(?string $value): ?string
 	{
 		if (!$value) {

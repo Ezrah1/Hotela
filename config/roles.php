@@ -9,16 +9,16 @@ return [
     'director' => [
         'label' => 'Director',
         'dashboard_view' => 'dashboard/roles/director',
-        'permissions' => [
-            'reports.all',
-            'settings.strategic',
-            'notifications.read',
-        ],
+        'permissions' => ['*'], // Director has full access as hotel owner
+        'is_tenant_role' => true, // Highest tenant role
     ],
+    // 'admin' role is deprecated - use 'director' for tenant ownership
+    // Keeping for migration compatibility but not shown in tenant UIs
     'admin' => [
-        'label' => 'Administrator',
-        'dashboard_view' => 'dashboard/roles/admin',
+        'label' => 'Administrator (Deprecated)',
+        'dashboard_view' => 'dashboard/roles/director',
         'permissions' => ['*'],
+        'is_tenant_role' => false, // Not a tenant role
     ],
     'tech' => [
         'label' => 'Technical Administrator',

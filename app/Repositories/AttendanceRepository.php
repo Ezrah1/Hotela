@@ -2,471 +2,536 @@
 
 namespace App\Repositories;
 
+use PDO;
+
 class AttendanceRepository
 {
-    protected \PDO $db;
+    protected PDO $db;
 
-    public function __construct(?\PDO $db = null)
+    public function __construct(?PDO $db = null)
     {
         $this->db = $db ?? db();
     }
 
-    public function checkIn(int $userId, ?string $notes = null): int
+    /**
+     * Check if user is currently present (checked in and not checked out)
+     */
+    public function isPresent(int $userId): bool
     {
-        $today = date('Y-m-d');
+        $stmt = $this->db->prepare('
+            SELECT COUNT(*) 
+            FROM attendance_logs 
+            WHERE user_id = :user_id 
+            AND status = "present"
+            AND DATE(check_in_time) = CURDATE()
+            AND (override_expires_at IS NULL OR override_expires_at > NOW())
+        ');
+        $stmt->execute(['user_id' => $userId]);
         
-        // Check if already checked in today
-        $existing = $this->getTodayAttendance($userId);
-        if ($existing && $existing['checked_in']) {
-            throw new \RuntimeException('Already checked in today');
-        }
-
-        // If exists but checked out, create new record
-        $checkInTime = date('Y-m-d H:i:s');
-
-        $stmt = $this->db->prepare('
-            INSERT INTO staff_attendance (user_id, check_in_time, checked_in, checked_out, date, notes)
-            VALUES (:user_id, :check_in_time, TRUE, FALSE, :date, :notes)
-        ');
-
-        $stmt->execute([
-            'user_id' => $userId,
-            'check_in_time' => $checkInTime,
-            'date' => $today,
-            'notes' => $notes,
-        ]);
-
-        return (int)$this->db->lastInsertId();
+        return (int)$stmt->fetchColumn() > 0;
     }
 
-    public function checkOut(int $userId, ?string $notes = null): void
+    /**
+     * Check if user has checked in today (alias for isPresent)
+     */
+    public function isCheckedIn(int $userId): bool
     {
-        $today = date('Y-m-d');
-        $checkOutTime = date('Y-m-d H:i:s');
-
-        $stmt = $this->db->prepare('
-            UPDATE staff_attendance
-            SET check_out_time = :check_out_time,
-                checked_in = FALSE,
-                checked_out = TRUE,
-                notes = CASE WHEN notes IS NULL OR notes = "" THEN :notes ELSE CONCAT(notes, "\n", :notes) END,
-                updated_at = NOW()
-            WHERE user_id = :user_id
-            AND date = :date
-            AND checked_in = TRUE
-            AND checked_out = FALSE
-        ');
-
-        $stmt->execute([
-            'user_id' => $userId,
-            'check_out_time' => $checkOutTime,
-            'date' => $today,
-            'notes' => $notes,
-        ]);
-
-        if ($stmt->rowCount() === 0) {
-            throw new \RuntimeException('No active check-in found for today');
-        }
+        return $this->isPresent($userId);
     }
 
-    public function getTodayAttendance(int $userId): ?array
+    /**
+     * Check if user has been checked out today
+     */
+    public function isCheckedOut(int $userId): bool
     {
-        $today = date('Y-m-d');
-
         $stmt = $this->db->prepare('
-            SELECT * FROM staff_attendance
-            WHERE user_id = :user_id
-            AND date = :date
+            SELECT COUNT(*) 
+            FROM attendance_logs 
+            WHERE user_id = :user_id 
+            AND status = "checked_out"
+            AND DATE(check_in_time) = CURDATE()
+            AND check_out_time IS NOT NULL
+        ');
+        $stmt->execute(['user_id' => $userId]);
+        
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Get current attendance record for user
+     */
+    public function getCurrentAttendance(int $userId): ?array
+    {
+        $stmt = $this->db->prepare('
+            SELECT * 
+            FROM attendance_logs 
+            WHERE user_id = :user_id 
+            AND status = "present"
+            AND DATE(check_in_time) = CURDATE()
             ORDER BY check_in_time DESC
             LIMIT 1
         ');
-
-        $stmt->execute([
-            'user_id' => $userId,
-            'date' => $today,
-        ]);
-
+        $stmt->execute(['user_id' => $userId]);
+        
         return $stmt->fetch() ?: null;
     }
 
-    public function isCheckedIn(int $userId): bool
+    /**
+     * Check in a staff member
+     * Supports both old signature (userId, notes) and new signature (userId, checkedInBy, notes)
+     */
+    public function checkIn(int $userId, $checkedInByOrNotes = null, ?string $notes = null): int
     {
-        $attendance = $this->getTodayAttendance($userId);
-        return $attendance && $attendance['checked_in'] && !$attendance['checked_out'];
+        // Handle old signature: checkIn(userId, notes)
+        if (is_string($checkedInByOrNotes) || $checkedInByOrNotes === null) {
+            $notes = $checkedInByOrNotes;
+            $checkedInBy = $_SESSION['user_id'] ?? 0; // Use current logged-in user
+        } else {
+            // New signature: checkIn(userId, checkedInBy, notes)
+            $checkedInBy = (int)$checkedInByOrNotes;
+        }
+        
+        // First, check out any existing attendance for today
+        $this->checkOutExisting($userId, $checkedInBy);
+        
+        $stmt = $this->db->prepare('
+            INSERT INTO attendance_logs (user_id, check_in_time, checked_in_by, status, notes)
+            VALUES (:user_id, NOW(), :checked_in_by, "present", :notes)
+        ');
+        $stmt->execute([
+            'user_id' => $userId,
+            'checked_in_by' => $checkedInBy,
+            'notes' => $notes,
+        ]);
+        
+        return (int)$this->db->lastInsertId();
     }
 
-    public function isCheckedOut(int $userId): bool
+    /**
+     * Check out a staff member
+     * Supports both old signature (userId, notes) and new signature (userId, checkedOutBy, notes)
+     */
+    public function checkOut(int $userId, $checkedOutByOrNotes = null, ?string $notes = null): bool
     {
-        $attendance = $this->getTodayAttendance($userId);
-        return $attendance && $attendance['checked_out'];
+        // Handle old signature: checkOut(userId, notes)
+        if (is_string($checkedOutByOrNotes) || $checkedOutByOrNotes === null) {
+            $notes = $checkedOutByOrNotes;
+            $checkedOutBy = $_SESSION['user_id'] ?? 0; // Use current logged-in user
+        } else {
+            // New signature: checkOut(userId, checkedOutBy, notes)
+            $checkedOutBy = (int)$checkedOutByOrNotes;
+        }
+        
+        $current = $this->getCurrentAttendance($userId);
+        if (!$current) {
+            return false;
+        }
+        
+        $stmt = $this->db->prepare('
+            UPDATE attendance_logs 
+            SET check_out_time = NOW(),
+                checked_out_by = :checked_out_by,
+                status = "checked_out",
+                notes = COALESCE(:notes, notes)
+            WHERE id = :id
+        ');
+        $stmt->execute([
+            'id' => $current['id'],
+            'checked_out_by' => $checkedOutBy,
+            'notes' => $notes,
+        ]);
+        
+        return $stmt->rowCount() > 0;
     }
 
-    public function getAttendanceHistory(int $userId, int $limit = 30): array
+    /**
+     * Check out any existing attendance for today
+     */
+    protected function checkOutExisting(int $userId, int $checkedOutBy): void
     {
         $stmt = $this->db->prepare('
-            SELECT * FROM staff_attendance
-            WHERE user_id = :user_id
-            ORDER BY date DESC, check_in_time DESC
-            LIMIT :limit
+            UPDATE attendance_logs 
+            SET check_out_time = NOW(),
+                checked_out_by = :checked_out_by,
+                status = "checked_out"
+            WHERE user_id = :user_id 
+            AND status = "present"
+            AND DATE(check_in_time) = CURDATE()
         ');
+        $stmt->execute([
+            'user_id' => $userId,
+            'checked_out_by' => $checkedOutBy,
+        ]);
+    }
 
-        $stmt->bindValue(':user_id', $userId, \PDO::PARAM_INT);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+    /**
+     * Get attendance history for a user
+     */
+    public function getHistory(int $userId, ?string $startDate = null, ?string $endDate = null, int $limit = 50): array
+    {
+        $params = ['user_id' => $userId];
+        $conditions = ['user_id = :user_id'];
+        
+        if ($startDate) {
+            $conditions[] = 'DATE(check_in_time) >= :start_date';
+            $params['start_date'] = $startDate;
+        }
+        if ($endDate) {
+            $conditions[] = 'DATE(check_in_time) <= :end_date';
+            $params['end_date'] = $endDate;
+        }
+        
+        $sql = '
+            SELECT al.*, 
+                   u1.name AS checked_in_by_name,
+                   u2.name AS checked_out_by_name,
+                   u3.name AS override_granted_by_name
+            FROM attendance_logs al
+            LEFT JOIN users u1 ON u1.id = al.checked_in_by
+            LEFT JOIN users u2 ON u2.id = al.checked_out_by
+            LEFT JOIN users u3 ON u3.id = al.override_granted_by
+            WHERE ' . implode(' AND ', $conditions) . '
+            ORDER BY al.check_in_time DESC
+            LIMIT ' . (int)$limit;
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Get all present staff
+     */
+    public function getPresentStaff(): array
+    {
+        $stmt = $this->db->prepare('
+            SELECT al.*, u.name, u.email, u.role_key
+            FROM attendance_logs al
+            INNER JOIN users u ON u.id = al.user_id
+            WHERE al.status = "present"
+            AND DATE(al.check_in_time) = CURDATE()
+            AND (al.override_expires_at IS NULL OR al.override_expires_at > NOW())
+            ORDER BY al.check_in_time DESC
+        ');
         $stmt->execute();
-
+        
         return $stmt->fetchAll();
     }
 
-    public function getAllTodayAttendance(): array
-    {
-        $today = date('Y-m-d');
-
-        $stmt = $this->db->prepare('
-            SELECT sa.*, u.name as user_name, u.email as user_email, u.role_key
-            FROM staff_attendance sa
-            INNER JOIN users u ON u.id = sa.user_id
-            WHERE sa.date = :date
-            ORDER BY sa.check_in_time DESC
-        ');
-
-        $stmt->execute(['date' => $today]);
-
-        return $stmt->fetchAll();
-    }
-
-    public function getAllAttendanceRecords(?string $startDate = null, ?string $endDate = null, ?int $userId = null, int $limit = 100): array
+    /**
+     * Get attendance statistics for a date range
+     */
+    public function getStatistics(?string $startDate = null, ?string $endDate = null): array
     {
         $params = [];
         $conditions = [];
-
+        
         if ($startDate) {
-            $conditions[] = 'sa.date >= :start_date';
+            $conditions[] = 'DATE(check_in_time) >= :start_date';
             $params['start_date'] = $startDate;
         }
-
         if ($endDate) {
-            $conditions[] = 'sa.date <= :end_date';
+            $conditions[] = 'DATE(check_in_time) <= :end_date';
             $params['end_date'] = $endDate;
         }
+        
+        $whereClause = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+        
+        $sql = "
+            SELECT 
+                COUNT(DISTINCT user_id) AS total_staff,
+                COUNT(*) AS total_check_ins,
+                SUM(CASE WHEN status = 'present' AND DATE(check_in_time) = CURDATE() THEN 1 ELSE 0 END) AS currently_present,
+                AVG(TIMESTAMPDIFF(HOUR, check_in_time, COALESCE(check_out_time, NOW()))) AS avg_hours
+            FROM attendance_logs
+            {$whereClause}
+        ";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        
+        return $stmt->fetch() ?: [];
+    }
 
+    /**
+     * Get all today's attendance records
+     */
+    public function getAllTodayAttendance(): array
+    {
+        $stmt = $this->db->prepare('
+            SELECT al.*, 
+                   u.name AS user_name,
+                   u.email AS user_email,
+                   u.role_key AS user_role,
+                   u1.name AS checked_in_by_name,
+                   u2.name AS checked_out_by_name
+            FROM attendance_logs al
+            INNER JOIN users u ON u.id = al.user_id
+            LEFT JOIN users u1 ON u1.id = al.checked_in_by
+            LEFT JOIN users u2 ON u2.id = al.checked_out_by
+            WHERE DATE(al.check_in_time) = CURDATE()
+            ORDER BY al.check_in_time DESC
+        ');
+        $stmt->execute();
+        
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Get today's attendance for a specific user
+     */
+    public function getTodayAttendance(int $userId): ?array
+    {
+        $stmt = $this->db->prepare('
+            SELECT al.*, 
+                   u1.name AS checked_in_by_name,
+                   u2.name AS checked_out_by_name
+            FROM attendance_logs al
+            LEFT JOIN users u1 ON u1.id = al.checked_in_by
+            LEFT JOIN users u2 ON u2.id = al.checked_out_by
+            WHERE al.user_id = :user_id
+            AND DATE(al.check_in_time) = CURDATE()
+            ORDER BY al.check_in_time DESC
+            LIMIT 1
+        ');
+        $stmt->execute(['user_id' => $userId]);
+        
+        return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Get attendance history for a user (alias for getHistory with days parameter)
+     */
+    public function getAttendanceHistory(int $userId, int $days = 30): array
+    {
+        $startDate = date('Y-m-d', strtotime("-{$days} days"));
+        return $this->getHistory($userId, $startDate, null, 100);
+    }
+
+    /**
+     * Get all attendance records with filters
+     */
+    public function getAllAttendanceRecords(?string $startDate = null, ?string $endDate = null, ?int $userId = null, int $limit = 200): array
+    {
+        $params = [];
+        $conditions = [];
+        
+        if ($startDate) {
+            $conditions[] = 'DATE(al.check_in_time) >= :start_date';
+            $params['start_date'] = $startDate;
+        }
+        if ($endDate) {
+            $conditions[] = 'DATE(al.check_in_time) <= :end_date';
+            $params['end_date'] = $endDate;
+        }
         if ($userId) {
-            $conditions[] = 'sa.user_id = :user_id';
+            $conditions[] = 'al.user_id = :user_id';
             $params['user_id'] = $userId;
         }
-
-        $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
-
-        $stmt = $this->db->prepare("
-            SELECT sa.*, u.name as user_name, u.email as user_email, u.role_key
-            FROM staff_attendance sa
-            INNER JOIN users u ON u.id = sa.user_id
-            {$whereClause}
-            ORDER BY sa.date DESC, sa.check_in_time DESC
-            LIMIT :limit
-        ");
-
-        foreach ($params as $key => $value) {
-            $stmt->bindValue(':' . $key, $value, is_int($value) ? \PDO::PARAM_INT : \PDO::PARAM_STR);
-        }
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
-        $stmt->execute();
-
-        $records = $stmt->fetchAll();
         
-        // Calculate hours for each record
-        foreach ($records as &$record) {
-            if ($record['check_out_time']) {
-                $checkIn = strtotime($record['check_in_time']);
-                $checkOut = strtotime($record['check_out_time']);
-                $record['hours_worked'] = round(($checkOut - $checkIn) / 3600, 2);
-            } else {
-                $record['hours_worked'] = null;
-            }
-        }
-
-        return $records;
+        $whereClause = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+        
+        $sql = "
+            SELECT al.*, 
+                   u.name AS user_name,
+                   u.email AS user_email,
+                   u.role_key AS user_role,
+                   u1.name AS checked_in_by_name,
+                   u2.name AS checked_out_by_name
+            FROM attendance_logs al
+            INNER JOIN users u ON u.id = al.user_id
+            LEFT JOIN users u1 ON u1.id = al.checked_in_by
+            LEFT JOIN users u2 ON u2.id = al.checked_out_by
+            {$whereClause}
+            ORDER BY al.check_in_time DESC
+            LIMIT " . (int)$limit;
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        
+        return $stmt->fetchAll();
     }
 
-    public function getDailyHours(int $userId, string $date): float
-    {
-        $stmt = $this->db->prepare('
-            SELECT check_in_time, check_out_time
-            FROM staff_attendance
-            WHERE user_id = :user_id
-            AND date = :date
-            AND checked_out = TRUE
-        ');
-
-        $stmt->execute([
-            'user_id' => $userId,
-            'date' => $date,
-        ]);
-
-        $records = $stmt->fetchAll();
-        $totalHours = 0;
-
-        foreach ($records as $record) {
-            if ($record['check_out_time']) {
-                $checkIn = strtotime($record['check_in_time']);
-                $checkOut = strtotime($record['check_out_time']);
-                $totalHours += ($checkOut - $checkIn) / 3600;
-            }
-        }
-
-        return round($totalHours, 2);
-    }
-
-    public function getWeeklyHours(int $userId, string $weekStart): float
-    {
-        $weekEnd = date('Y-m-d', strtotime($weekStart . ' +6 days'));
-
-        $stmt = $this->db->prepare('
-            SELECT check_in_time, check_out_time
-            FROM staff_attendance
-            WHERE user_id = :user_id
-            AND date >= :week_start
-            AND date <= :week_end
-            AND checked_out = TRUE
-        ');
-
-        $stmt->execute([
-            'user_id' => $userId,
-            'week_start' => $weekStart,
-            'week_end' => $weekEnd,
-        ]);
-
-        $records = $stmt->fetchAll();
-        $totalHours = 0;
-
-        foreach ($records as $record) {
-            if ($record['check_out_time']) {
-                $checkIn = strtotime($record['check_in_time']);
-                $checkOut = strtotime($record['check_out_time']);
-                $totalHours += ($checkOut - $checkIn) / 3600;
-            }
-        }
-
-        return round($totalHours, 2);
-    }
-
-    public function getMonthlyStats(int $userId, string $month): array
-    {
-        $startDate = date('Y-m-01', strtotime($month));
-        $endDate = date('Y-m-t', strtotime($month));
-
-        $stmt = $this->db->prepare('
-            SELECT 
-                COUNT(DISTINCT date) as days_worked,
-                SUM(CASE WHEN checked_out = TRUE AND check_out_time IS NOT NULL 
-                    THEN TIMESTAMPDIFF(SECOND, check_in_time, check_out_time) / 3600.0 
-                    ELSE 0 END) as total_hours
-            FROM staff_attendance
-            WHERE user_id = :user_id
-            AND date >= :start_date
-            AND date <= :end_date
-        ');
-
-        $stmt->execute([
-            'user_id' => $userId,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-        ]);
-
-        $result = $stmt->fetch();
-        return [
-            'days_worked' => (int)($result['days_worked'] ?? 0),
-            'total_hours' => round((float)($result['total_hours'] ?? 0), 2),
-        ];
-    }
-
+    /**
+     * Get attendance statistics for a specific user
+     */
     public function getAttendanceStatistics(?int $userId = null, ?string $startDate = null, ?string $endDate = null): array
     {
         $params = [];
         $conditions = [];
-
+        
         if ($userId) {
-            $conditions[] = 'sa.user_id = :user_id';
+            $conditions[] = 'user_id = :user_id';
             $params['user_id'] = $userId;
         }
-
         if ($startDate) {
-            $conditions[] = 'sa.date >= :start_date';
+            $conditions[] = 'DATE(check_in_time) >= :start_date';
             $params['start_date'] = $startDate;
         }
-
         if ($endDate) {
-            $conditions[] = 'sa.date <= :end_date';
+            $conditions[] = 'DATE(check_in_time) <= :end_date';
             $params['end_date'] = $endDate;
         }
-
-        $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
-
-        $stmt = $this->db->prepare("
+        
+        $whereClause = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+        
+        $sql = "
             SELECT 
-                sa.user_id,
-                u.name as user_name,
-                u.role_key,
-                COUNT(DISTINCT sa.date) as total_days,
-                SUM(CASE WHEN sa.checked_out = TRUE AND sa.check_out_time IS NOT NULL 
-                    THEN TIMESTAMPDIFF(SECOND, sa.check_in_time, sa.check_out_time) / 3600.0 
-                    ELSE 0 END) as total_hours,
-                AVG(CASE WHEN sa.checked_out = TRUE AND sa.check_out_time IS NOT NULL 
-                    THEN TIMESTAMPDIFF(SECOND, sa.check_in_time, sa.check_out_time) / 3600.0 
-                    ELSE NULL END) as avg_hours_per_day,
-                MIN(CASE WHEN sa.checked_out = TRUE AND sa.check_out_time IS NOT NULL 
-                    THEN TIMESTAMPDIFF(SECOND, sa.check_in_time, sa.check_out_time) / 3600.0 
-                    ELSE NULL END) as min_hours,
-                MAX(CASE WHEN sa.checked_out = TRUE AND sa.check_out_time IS NOT NULL 
-                    THEN TIMESTAMPDIFF(SECOND, sa.check_in_time, sa.check_out_time) / 3600.0 
-                    ELSE NULL END) as max_hours
-            FROM staff_attendance sa
-            INNER JOIN users u ON u.id = sa.user_id
+                COUNT(DISTINCT DATE(check_in_time)) AS days_worked,
+                COUNT(*) AS total_check_ins,
+                AVG(TIMESTAMPDIFF(HOUR, check_in_time, COALESCE(check_out_time, NOW()))) AS avg_hours_per_day,
+                MIN(check_in_time) AS first_check_in,
+                MAX(COALESCE(check_out_time, check_in_time)) AS last_activity
+            FROM attendance_logs
             {$whereClause}
-            GROUP BY sa.user_id, u.name, u.role_key
-            ORDER BY total_hours DESC
-        ");
+        ";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        
+        return $stmt->fetch() ?: [];
+    }
 
-        foreach ($params as $key => $value) {
-            $stmt->bindValue(':' . $key, $value, is_int($value) ? \PDO::PARAM_INT : \PDO::PARAM_STR);
+    /**
+     * Get per-employee attendance statistics
+     */
+    public function getPerEmployeeStatistics(?string $startDate = null, ?string $endDate = null): array
+    {
+        $params = [];
+        $conditions = [];
+        
+        if ($startDate) {
+            $conditions[] = 'DATE(al.check_in_time) >= :start_date';
+            $params['start_date'] = $startDate;
         }
-        $stmt->execute();
-
+        if ($endDate) {
+            $conditions[] = 'DATE(al.check_in_time) <= :end_date';
+            $params['end_date'] = $endDate;
+        }
+        
+        $whereClause = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+        
+        $sql = "
+            SELECT 
+                u.id AS user_id,
+                u.name AS user_name,
+                u.email,
+                r.key AS role_key,
+                COUNT(DISTINCT DATE(al.check_in_time)) AS total_days,
+                SUM(TIMESTAMPDIFF(HOUR, al.check_in_time, COALESCE(al.check_out_time, NOW()))) AS total_hours,
+                AVG(TIMESTAMPDIFF(HOUR, al.check_in_time, COALESCE(al.check_out_time, NOW()))) AS avg_hours_per_day,
+                MIN(TIMESTAMPDIFF(HOUR, al.check_in_time, COALESCE(al.check_out_time, NOW()))) AS min_hours,
+                MAX(TIMESTAMPDIFF(HOUR, al.check_in_time, COALESCE(al.check_out_time, NOW()))) AS max_hours
+            FROM attendance_logs al
+            INNER JOIN users u ON u.id = al.user_id
+            LEFT JOIN roles r ON r.key = u.role_key
+            {$whereClause}
+            GROUP BY u.id, u.name, u.email, r.key
+            ORDER BY total_days DESC, total_hours DESC
+        ";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        
         return $stmt->fetchAll();
     }
 
+    /**
+     * Detect attendance anomalies
+     */
     public function detectAnomalies(?int $userId = null, int $days = 30): array
     {
         $startDate = date('Y-m-d', strtotime("-{$days} days"));
-
         $params = ['start_date' => $startDate];
-        $conditions = ['sa.date >= :start_date', 'sa.checked_out = TRUE', 'sa.check_out_time IS NOT NULL'];
-
+        $conditions = ['DATE(check_in_time) >= :start_date'];
+        
         if ($userId) {
-            $conditions[] = 'sa.user_id = :user_id';
+            $conditions[] = 'user_id = :user_id';
             $params['user_id'] = $userId;
         }
-
-        $whereClause = 'WHERE ' . implode(' AND ', $conditions);
-
-        $stmt = $this->db->prepare("
-            SELECT 
-                sa.*,
-                u.name as user_name,
-                u.email as user_email,
-                u.role_key,
-                TIMESTAMPDIFF(SECOND, sa.check_in_time, sa.check_out_time) / 3600.0 as hours_worked,
-                TIME(sa.check_in_time) as check_in_time_only,
-                TIME(sa.check_out_time) as check_out_time_only
-            FROM staff_attendance sa
-            INNER JOIN users u ON u.id = sa.user_id
-            {$whereClause}
-            ORDER BY sa.date DESC
-        ");
-
+        
+        // Find check-ins outside normal hours (before 6 AM or after 10 PM)
+        // Exclude ignored anomalies
+        $sql = "
+            SELECT al.*, u.name AS user_name, u.role_key AS user_role
+            FROM attendance_logs al
+            INNER JOIN users u ON u.id = al.user_id
+            LEFT JOIN ignored_anomalies ia ON ia.attendance_log_id = al.id
+            WHERE " . implode(' AND ', $conditions) . "
+            AND (HOUR(check_in_time) < 6 OR HOUR(check_in_time) >= 22)
+            AND ia.id IS NULL
+            ORDER BY al.check_in_time DESC
+        ";
+        
+        $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        $records = $stmt->fetchAll();
-
-        $anomalies = [];
-
-        foreach ($records as $record) {
-            $hours = (float)$record['hours_worked'];
-            $issues = [];
-            $sameTimeCount = 0;
-
-            // Very short shifts (less than 1 hour)
-            if ($hours < 1) {
-                $issues[] = 'Very short shift (' . round($hours, 2) . ' hours)';
-            }
-
-            // Suspiciously long shifts (more than 16 hours)
-            if ($hours > 16) {
-                $issues[] = 'Unusually long shift (' . round($hours, 2) . ' hours)';
-            }
-
-            // Check for exact same check-in/check-out times across multiple days
-            $checkInTime = $record['check_in_time_only'];
-            $checkOutTime = $record['check_out_time_only'];
-
-            if ($checkInTime && $checkOutTime) {
-                $sameTimeCount = $this->countSameTimePattern($record['user_id'], $checkInTime, $checkOutTime, $startDate);
-                if ($sameTimeCount >= 3) {
-                    $issues[] = "Repeated exact times ({$sameTimeCount} times): {$checkInTime} - {$checkOutTime}";
-                }
-            }
-
-            if (!empty($issues)) {
-                $severity = 'medium';
-                if ($hours < 1 || $hours > 16) {
-                    $severity = 'high';
-                } elseif ($sameTimeCount >= 5) {
-                    $severity = 'high';
-                }
-
-                $anomalies[] = [
-                    'record' => $record,
-                    'issues' => $issues,
-                    'severity' => $severity,
-                ];
-            }
-        }
-
-        return $anomalies;
+        
+        return $stmt->fetchAll();
     }
 
-    protected function countSameTimePattern(int $userId, string $checkInTime, string $checkOutTime, string $startDate): int
+    /**
+     * Ignore an anomaly
+     */
+    public function ignoreAnomaly(int $attendanceLogId, int $ignoredBy, ?string $reason = null): bool
     {
         $stmt = $this->db->prepare('
-            SELECT COUNT(*) as count
-            FROM staff_attendance
-            WHERE user_id = :user_id
-            AND date >= :start_date
-            AND checked_out = TRUE
-            AND TIME(check_in_time) = :check_in_time
-            AND TIME(check_out_time) = :check_out_time
+            INSERT INTO ignored_anomalies (attendance_log_id, ignored_by, reason)
+            VALUES (:attendance_log_id, :ignored_by, :reason)
+            ON DUPLICATE KEY UPDATE 
+                ignored_by = VALUES(ignored_by),
+                reason = VALUES(reason),
+                created_at = CURRENT_TIMESTAMP
         ');
-
-        $stmt->execute([
-            'user_id' => $userId,
-            'start_date' => $startDate,
-            'check_in_time' => $checkInTime,
-            'check_out_time' => $checkOutTime,
+        
+        return $stmt->execute([
+            'attendance_log_id' => $attendanceLogId,
+            'ignored_by' => $ignoredBy,
+            'reason' => $reason
         ]);
-
-        $result = $stmt->fetch();
-        return (int)($result['count'] ?? 0);
     }
 
+    /**
+     * Unignore an anomaly (remove from ignored list)
+     */
+    public function unignoreAnomaly(int $attendanceLogId): bool
+    {
+        $stmt = $this->db->prepare('DELETE FROM ignored_anomalies WHERE attendance_log_id = :attendance_log_id');
+        return $stmt->execute(['attendance_log_id' => $attendanceLogId]);
+    }
+
+    /**
+     * Check if an anomaly is ignored
+     */
+    public function isAnomalyIgnored(int $attendanceLogId): bool
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM ignored_anomalies WHERE attendance_log_id = :attendance_log_id');
+        $stmt->execute(['attendance_log_id' => $attendanceLogId]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Get best attendance records
+     */
     public function getBestAttendance(int $limit = 10): array
     {
-        $last30Days = date('Y-m-d', strtotime('-30 days'));
-
-        $stmt = $this->db->prepare('
+        $sql = "
             SELECT 
-                sa.user_id,
-                u.name as user_name,
-                u.email as user_email,
-                u.role_key,
-                COUNT(DISTINCT sa.date) as days_present,
-                SUM(CASE WHEN sa.checked_out = TRUE AND sa.check_out_time IS NOT NULL 
-                    THEN TIMESTAMPDIFF(SECOND, sa.check_in_time, sa.check_out_time) / 3600.0 
-                    ELSE 0 END) as total_hours,
-                AVG(CASE WHEN sa.checked_out = TRUE AND sa.check_out_time IS NOT NULL 
-                    THEN TIMESTAMPDIFF(SECOND, sa.check_in_time, sa.check_out_time) / 3600.0 
-                    ELSE NULL END) as avg_hours_per_day
-            FROM staff_attendance sa
-            INNER JOIN users u ON u.id = sa.user_id
-            WHERE sa.date >= :start_date
-            GROUP BY sa.user_id, u.name, u.email, u.role_key
-            HAVING days_present > 0
-            ORDER BY days_present DESC, total_hours DESC
-            LIMIT :limit
-        ');
-
-        $stmt->bindValue(':start_date', $last30Days, \PDO::PARAM_STR);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+                u.id,
+                u.name,
+                u.email,
+                COUNT(DISTINCT DATE(al.check_in_time)) AS days_worked,
+                AVG(TIMESTAMPDIFF(HOUR, al.check_in_time, COALESCE(al.check_out_time, NOW()))) AS avg_hours
+            FROM attendance_logs al
+            INNER JOIN users u ON u.id = al.user_id
+            WHERE DATE(al.check_in_time) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY u.id, u.name, u.email
+            ORDER BY days_worked DESC, avg_hours DESC
+            LIMIT " . (int)$limit;
+        
+        $stmt = $this->db->prepare($sql);
         $stmt->execute();
-
+        
         return $stmt->fetchAll();
     }
 }
-

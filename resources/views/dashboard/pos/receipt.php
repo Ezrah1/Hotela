@@ -124,8 +124,24 @@ $isMpesaCancelled = $paymentType === 'mpesa' && ($mpesaStatus === 'cancelled' ||
             </div>
         </div>
 
+        <!-- QR Code Section -->
+        <?php
+        // Build QR code URL - link to online receipt
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? 'localhost';
+        $receiptPath = base_url('staff/dashboard/pos/receipt?id=' . (int)($sale['id'] ?? 0));
+        $receiptUrl = $scheme . '://' . $host . $receiptPath;
+        $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=1&data=' . urlencode($receiptUrl);
+        ?>
+        <div style="text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;">
+            <p style="margin-bottom: 0.75rem; font-size: 0.9rem; color: #64748b; font-weight: 500;">Scan to view receipt online</p>
+            <div style="display: inline-block; padding: 1rem; background: white; border: 2px solid #e2e8f0; border-radius: 8px;">
+                <img src="<?= htmlspecialchars($qrCodeUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="QR Code - Receipt" style="width: 200px; height: 200px; display: block; max-width: 100%;">
+            </div>
+        </div>
+
         <!-- Footer -->
-        <div style="text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 0.875rem;">
+        <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 0.875rem;">
             <p style="margin: 0.5rem 0;">Thank you for your business!</p>
             <p style="margin: 0.5rem 0;"><?= htmlspecialchars($businessName); ?> - <?= date('Y'); ?></p>
         </div>

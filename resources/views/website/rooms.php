@@ -6,7 +6,8 @@ $mode = $website['room_display_mode'] ?? 'both';
 $guestProfile = \App\Support\GuestPortal::user();
 $defaultCheckIn = $_GET['check_in'] ?? date('Y-m-d', strtotime('+1 day'));
 $defaultCheckOut = $_GET['check_out'] ?? date('Y-m-d', strtotime('+2 days'));
-$slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $guestProfile, $defaultCheckIn, $defaultCheckOut) {
+$onlinePaymentEnabled = !empty($website['online_payment_enabled']);
+$slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $guestProfile, $defaultCheckIn, $defaultCheckOut, $onlinePaymentEnabled) {
     ob_start(); ?>
     <section class="page-hero page-hero-simple">
         <div class="container">
@@ -16,41 +17,52 @@ $slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $
     </section>
     <section class="container">
         <form id="roomFilters" class="room-filter-panel">
-                    <div class="room-filter-grid">
-                        <label>
-                            <span>Check-in</span>
-                            <input type="date" name="check_in" value="<?= htmlspecialchars($defaultCheckIn); ?>" min="<?= date('Y-m-d'); ?>">
-                        </label>
-                        <label>
-                            <span>Check-out</span>
-                            <input type="date" name="check_out" value="<?= htmlspecialchars($defaultCheckOut); ?>" min="<?= date('Y-m-d', strtotime('+1 day')); ?>">
-                        </label>
-                        <label>
-                            <span>Room type</span>
-                            <select name="room_type_id">
-                                <option value="">Any</option>
-                                <?php foreach ($roomTypes as $type): ?>
-                                    <option value="<?= (int)$type['id']; ?>" <?= $selectedTypeId === (int)$type['id'] ? 'selected' : ''; ?>>
-                                        <?= htmlspecialchars($type['name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </label>
-                        <label>
-                            <span>Guests</span>
-                            <input type="number" name="guests" min="1" value="2">
-                        </label>
-                        <label>
-                            <span>Search</span>
-                            <input type="text" name="query" placeholder="Room name, number, keywords">
-                        </label>
-                    </div>
-                    <div class="room-filter-actions">
-                        <label class="checkbox-inline">
-                            <input type="checkbox" name="available_only" checked>
-                            <span>Available rooms only</span>
-                        </label>
-                        <button type="reset" class="btn btn-ghost btn-small">Clear filters</button>
+                    <button type="button" class="room-filter-toggle" aria-label="Toggle filters">
+                        <span>Filters</span>
+                        <span class="filter-count" id="activeFilterCount" style="display: none;">0</span>
+                        <svg class="filter-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="room-filter-content">
+                        <div class="room-filter-essential">
+                            <label>
+                                <span>Check-in</span>
+                                <input type="date" name="check_in" value="<?= htmlspecialchars($defaultCheckIn); ?>" min="<?= date('Y-m-d'); ?>">
+                            </label>
+                            <label>
+                                <span>Check-out</span>
+                                <input type="date" name="check_out" value="<?= htmlspecialchars($defaultCheckOut); ?>" min="<?= date('Y-m-d'); ?>">
+                            </label>
+                        </div>
+                        <div class="room-filter-advanced">
+                            <label>
+                                <span>Room type</span>
+                                <select name="room_type_id">
+                                    <option value="">Any</option>
+                                    <?php foreach ($roomTypes as $type): ?>
+                                        <option value="<?= (int)$type['id']; ?>" <?= $selectedTypeId === (int)$type['id'] ? 'selected' : ''; ?>>
+                                            <?= htmlspecialchars($type['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Guests</span>
+                                <input type="number" name="guests" min="1" value="2">
+                            </label>
+                            <label>
+                                <span>Search</span>
+                                <input type="text" name="query" placeholder="Room name, number, keywords">
+                            </label>
+                        </div>
+                        <div class="room-filter-actions">
+                            <label class="checkbox-inline">
+                                <input type="checkbox" name="available_only" checked>
+                                <span>Available rooms only</span>
+                            </label>
+                            <button type="reset" class="btn btn-ghost btn-small">Clear filters</button>
+                        </div>
                     </div>
                 </form>
     </section>
@@ -192,7 +204,7 @@ $slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $
                         </label>
                         <label>
                             <span>Check-out</span>
-                            <input type="date" name="check_out" min="<?= date('Y-m-d', strtotime('+1 day')); ?>" required>
+                            <input type="date" name="check_out" min="<?= date('Y-m-d'); ?>" required>
                         </label>
                         <label>
                             <span>Guests</span>
@@ -258,8 +270,28 @@ $slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $
                         <span>Special requests (optional)</span>
                         <textarea name="special_requests" rows="3" placeholder="Airport pickup, dietary notes, celebration setup..."></textarea>
                     </label>
-                    <button class="btn btn-primary btn-full" type="submit">Confirm booking</button>
-                    <p class="booking-panel__fine-print">We’ll email/SMS your confirmation instantly. Pay on arrival unless online payments are enabled.</p>
+                    <?php if ($onlinePaymentEnabled): ?>
+                    <div class="payment-method-section" style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                        <label style="display: block; margin-bottom: 0.75rem; font-weight: 500; color: #1e293b; font-size: 0.9rem;">
+                            <span>Payment Method</span>
+                        </label>
+                        <select name="payment_method" class="payment-method-select" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem; background: white;">
+                            <option value="pay_on_arrival">Pay on Arrival</option>
+                            <option value="mpesa">M-Pesa</option>
+                        </select>
+                        <div class="mpesa-phone-field" style="display: none; margin-top: 0.75rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: #475569; font-size: 0.875rem; font-weight: 500;">
+                                <span>M-Pesa Phone Number</span>
+                            </label>
+                            <input type="tel" name="mpesa_phone" placeholder="254700000000" pattern="[0-9+]{10,15}" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.95rem;">
+                            <small style="display: block; margin-top: 0.25rem; color: #64748b; font-size: 0.8rem;">Enter phone number (e.g., 254700000000 or 0700000000)</small>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <input type="hidden" name="payment_method" value="pay_on_arrival">
+                    <?php endif; ?>
+                    <button class="btn btn-primary btn-full" type="submit" style="margin-top: 1rem;">Confirm booking</button>
+                    <p class="booking-panel__fine-print">We'll email/SMS your confirmation instantly. Pay on arrival unless online payments are enabled.</p>
                 </form>
             </div>
         </div>
@@ -268,8 +300,20 @@ $slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const filters = document.getElementById('roomFilters');
+            const filterToggle = filters?.querySelector('.room-filter-toggle');
+            const filterContent = filters?.querySelector('.room-filter-content');
+            const filterPanel = filters?.closest('.room-filter-panel');
             const cards = Array.from(document.querySelectorAll('.room-card'));
             const emptyState = document.querySelector('.rooms-grid .empty-state');
+            
+            // Mobile filter toggle functionality
+            if (filterToggle && filterPanel) {
+                filterToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    filterPanel.classList.toggle('is-open');
+                });
+            }
+
             const panel = document.getElementById('roomBookingPanel');
             const checkForm = document.getElementById('bookingDatesForm');
             const guestForm = document.getElementById('bookingGuestForm');
@@ -303,15 +347,52 @@ $slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $
                 return field ? !!field.checked : false;
             };
 
+            // Filter count badge
+            const filterCount = document.getElementById('activeFilterCount');
+            function updateFilterCount() {
+                if (!filterCount) return;
+                let count = 0;
+                const typeValue = getFilterValue('[name="room_type_id"]');
+                const queryValue = getFilterValue('[name="query"]').trim();
+                const guestValue = parseInt(getFilterValue('[name="guests"]') || '0', 10);
+                const availableOnly = getFilterChecked('[name="available_only"]');
+                const defaultGuests = 2;
+
+                if (typeValue) count++;
+                if (queryValue) count++;
+                if (guestValue && guestValue !== defaultGuests) count++;
+                if (!availableOnly) count++; // Count if unchecked (non-default state)
+
+                if (count > 0) {
+                    filterCount.textContent = count;
+                    filterCount.style.display = 'inline-flex';
+                } else {
+                    filterCount.style.display = 'none';
+                }
+            }
+
             const filterInputs = filters ? filters.querySelectorAll('input, select') : [];
             filterInputs.forEach(input => {
-                input.addEventListener('input', applyFilters);
+                input.addEventListener('input', () => {
+                    applyFilters();
+                    updateFilterCount();
+                });
+                input.addEventListener('change', () => {
+                    applyFilters();
+                    updateFilterCount();
+                });
             });
             if (filters) {
                 filters.addEventListener('reset', () => {
-                    setTimeout(applyFilters, 50);
+                    setTimeout(() => {
+                        applyFilters();
+                        updateFilterCount();
+                    }, 50);
                 });
             }
+
+            // Initialize filter count
+            updateFilterCount();
 
             function applyFilters() {
                 const typeValue = getFilterValue('[name="room_type_id"]');
@@ -534,6 +615,32 @@ $slot = function () use ($rooms, $mode, $website, $roomTypes, $selectedTypeId, $
                         button.textContent = 'Submitting...';
                     }
                 });
+                
+                // Handle payment method selection
+                const paymentMethodSelect = guestForm.querySelector('.payment-method-select');
+                if (paymentMethodSelect) {
+                    paymentMethodSelect.addEventListener('change', function() {
+                        const mpesaField = guestForm.querySelector('.mpesa-phone-field');
+                        const mpesaInput = guestForm.querySelector('input[name="mpesa_phone"]');
+                        const guestPhoneInput = guestForm.querySelector('input[name="guest_phone"]');
+                        
+                        if (this.value === 'mpesa') {
+                            if (mpesaField) mpesaField.style.display = 'block';
+                            if (mpesaInput) {
+                                mpesaInput.required = true;
+                                // Pre-fill with guest phone if available
+                                if (!mpesaInput.value && guestPhoneInput && guestPhoneInput.value) {
+                                    mpesaInput.value = guestPhoneInput.value.replace(/[^0-9+]/g, '');
+                                }
+                            }
+                        } else {
+                            if (mpesaField) mpesaField.style.display = 'none';
+                            if (mpesaInput) {
+                                mpesaInput.required = false;
+                            }
+                        }
+                    });
+                }
             }
 
             function formatDate(value) {

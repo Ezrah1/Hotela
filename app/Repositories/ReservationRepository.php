@@ -28,6 +28,8 @@ class ReservationRepository
             INNER JOIN room_types ON room_types.id = reservations.room_type_id
             LEFT JOIN rooms ON rooms.id = reservations.room_id
             WHERE reservations.check_in >= CURDATE()
+            AND reservations.status NOT IN (\'checked_out\', \'cancelled\')
+            AND reservations.check_in_status != \'checked_out\'
         ';
         $sql .= $this->tenantCondition('reservations', $params);
         $sql .= '
@@ -40,6 +42,93 @@ class ReservationRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Get upcoming bookings for a guest
+     */
+    public function upcomingForGuest(string $identifier): array
+    {
+        $identifier = trim($identifier);
+        if ($identifier === '') {
+            return [];
+        }
+
+        $params = [];
+        // Exclude checked-out, cancelled bookings
+        // Check both status and check_in_status fields
+        $conditions = [
+            'reservations.check_in >= CURDATE()',
+            'reservations.status NOT IN (\'checked_out\', \'cancelled\')',
+            'reservations.check_in_status != \'checked_out\'',
+        ];
+
+        if (str_contains($identifier, '@')) {
+            $params['guest_email'] = strtolower($identifier);
+            $conditions[] = 'LOWER(guest_email) = :guest_email';
+        } else {
+            $sanitized = preg_replace('/[^0-9]/', '', $identifier);
+            if ($sanitized === '') {
+                return [];
+            }
+            $params['guest_phone'] = $sanitized;
+            $conditions[] = 'REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(guest_phone, " ", ""), "-", ""), "(", ""), ")", ""), "+", "") = :guest_phone';
+        }
+
+        $sql = '
+            SELECT reservations.*, rooms.room_number, rooms.display_name, room_types.name AS room_type_name
+            FROM reservations
+            INNER JOIN room_types ON room_types.id = reservations.room_type_id
+            LEFT JOIN rooms ON rooms.id = reservations.room_id
+            WHERE ' . implode(' AND ', $conditions);
+        $sql .= $this->tenantCondition('reservations', $params);
+        $sql .= ' ORDER BY reservations.check_in ASC';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Get past bookings for a guest
+     */
+    public function pastForGuest(string $identifier): array
+    {
+        $identifier = trim($identifier);
+        if ($identifier === '') {
+            return [];
+        }
+
+        $params = [];
+        // Include bookings that are checked out, cancelled, completed, or have passed check-out date
+        $conditions = [
+            '(reservations.check_out < CURDATE() OR reservations.status IN (\'checked_out\', \'cancelled\', \'completed\'))',
+        ];
+
+        if (str_contains($identifier, '@')) {
+            $params['guest_email'] = strtolower($identifier);
+            $conditions[] = 'LOWER(guest_email) = :guest_email';
+        } else {
+            $sanitized = preg_replace('/[^0-9]/', '', $identifier);
+            if ($sanitized === '') {
+                return [];
+            }
+            $params['guest_phone'] = $sanitized;
+            $conditions[] = 'REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(guest_phone, " ", ""), "-", ""), "(", ""), ")", ""), "+", "") = :guest_phone';
+        }
+
+        $sql = '
+            SELECT reservations.*, rooms.room_number, rooms.display_name, room_types.name AS room_type_name
+            FROM reservations
+            INNER JOIN room_types ON room_types.id = reservations.room_type_id
+            LEFT JOIN rooms ON rooms.id = reservations.room_id
+            WHERE ' . implode(' AND ', $conditions);
+        $sql .= $this->tenantCondition('reservations', $params);
+        $sql .= ' ORDER BY reservations.check_out DESC';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
     public function calendar(string $startDate, string $endDate): array
     {
         $params = ['start' => $startDate, 'end' => $endDate];
@@ -49,6 +138,8 @@ class ReservationRepository
             INNER JOIN room_types ON room_types.id = reservations.room_type_id
             LEFT JOIN rooms ON rooms.id = reservations.room_id
             WHERE NOT (reservations.check_out <= :start OR reservations.check_in >= :end)
+            AND reservations.status NOT IN (\'checked_out\', \'cancelled\')
+            AND reservations.check_in_status != \'checked_out\'
         ';
         $sql .= $this->tenantCondition('reservations', $params);
         $sql .= ' ORDER BY reservations.check_in';
@@ -173,14 +264,44 @@ class ReservationRepository
     public function findByReference(string $reference): ?array
     {
         $params = ['reference' => $reference];
-        $sql = 'SELECT * FROM reservations WHERE reference = :reference';
-        $sql .= $this->tenantCondition('reservations', $params);
-        $sql .= ' LIMIT 1';
+        $sql = '
+            SELECT reservations.*, rooms.room_number, rooms.display_name, room_types.name AS room_type_name
+            FROM reservations
+            INNER JOIN room_types ON room_types.id = reservations.room_type_id
+            LEFT JOIN rooms ON rooms.id = reservations.room_id
+            WHERE reservations.reference = :reference
+        ';
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        $reservation = $stmt->fetch();
-
-        return $reservation ?: null;
+        $result = $stmt->fetch();
+        
+        return $result ?: null;
+    }
+    
+    /**
+     * Get checked-in guests who have exceeded their checkout date
+     */
+    public function getOverdueCheckouts(): array
+    {
+        $sql = '
+            SELECT 
+                reservations.*,
+                rooms.room_number,
+                rooms.display_name,
+                room_types.name AS room_type_name,
+                DATEDIFF(CURDATE(), reservations.check_out) AS days_overdue
+            FROM reservations
+            INNER JOIN room_types ON room_types.id = reservations.room_type_id
+            LEFT JOIN rooms ON rooms.id = reservations.room_id
+            WHERE reservations.status = "checked_in"
+                AND reservations.check_in_status = "checked_in"
+                AND reservations.check_out < CURDATE()
+            ORDER BY reservations.check_out ASC
+        ';
+        
+        $stmt = $this->db->query($sql);
+        return $stmt->fetchAll() ?: [];
     }
 
     public function validateGuestAccess(string $reference, string $identifier): ?array
@@ -274,19 +395,32 @@ class ReservationRepository
         return $stmt->fetchAll();
     }
 
-    public function all(?string $filter = null, int $limit = 100): array
+    public function all(?string $filter = null, int $limit = 100, ?string $startDate = null, ?string $endDate = null): array
     {
         $params = [];
         $conditions = [];
 
         if ($filter === 'upcoming') {
             $conditions[] = 'reservations.check_in >= CURDATE()';
+            // Exclude checked-out and cancelled bookings
+            $conditions[] = 'reservations.status NOT IN (\'checked_out\', \'cancelled\')';
+            $conditions[] = 'reservations.check_in_status != \'checked_out\'';
         } elseif ($filter === 'checked_in') {
             $conditions[] = 'reservations.check_in_status = "checked_in"';
         } elseif ($filter === 'checked_out') {
             $conditions[] = 'reservations.check_in_status = "checked_out"';
         } elseif ($filter === 'scheduled') {
             $conditions[] = 'reservations.check_in_status = "scheduled"';
+        }
+
+        // Date range filtering
+        if ($startDate) {
+            $conditions[] = 'reservations.check_in >= :start_date';
+            $params['start_date'] = $startDate;
+        }
+        if ($endDate) {
+            $conditions[] = 'reservations.check_in <= :end_date';
+            $params['end_date'] = $endDate;
         }
 
         $sql = '

@@ -24,7 +24,7 @@ class BillsController extends Controller
 
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager', 'operation_manager']);
 
         $start = $this->sanitizeDate($request->input('start')) ?? date('Y-m-01');
         $end = $this->sanitizeDate($request->input('end')) ?? date('Y-m-d');
@@ -58,7 +58,7 @@ class BillsController extends Controller
 
     public function create(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager', 'operation_manager']);
 
         if ($request->method() === 'POST') {
             $this->store($request);
@@ -73,7 +73,7 @@ class BillsController extends Controller
 
     public function store(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager', 'operation_manager']);
 
         $user = Auth::user();
         if (!$user) {
@@ -122,7 +122,7 @@ class BillsController extends Controller
 
     public function edit(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $id = (int)$request->input('id');
         if (!$id) {
@@ -150,7 +150,7 @@ class BillsController extends Controller
 
     public function update(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $id = (int)$request->input('id');
         if (!$id) {
@@ -193,7 +193,7 @@ class BillsController extends Controller
 
     public function show(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager', 'operation_manager']);
 
         $id = (int)$request->input('id');
         if (!$id) {
@@ -217,7 +217,7 @@ class BillsController extends Controller
 
     public function approve(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $id = (int)$request->input('id');
         if (!$id) {
@@ -241,7 +241,7 @@ class BillsController extends Controller
 
     public function markPaid(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $id = (int)$request->input('id');
         if (!$id) {

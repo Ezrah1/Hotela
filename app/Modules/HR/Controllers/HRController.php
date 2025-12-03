@@ -18,7 +18,7 @@ class HRController extends Controller
 
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'director']);
+        Auth::requireRoles(['admin', 'operation_manager', 'director', 'finance_manager']);
 
         $search = $request->input('q', '');
         $statusFilter = $request->input('status', '');
@@ -29,7 +29,14 @@ class HRController extends Controller
         // Get employee records
         $employeeRecords = $this->getEmployeeRecords();
 
-        $roles = db()->query('SELECT `key`, name FROM roles ORDER BY name ASC')->fetchAll();
+        $roles = db()->query("
+            SELECT `key`, name 
+            FROM roles 
+            WHERE `key` != 'admin' 
+            AND `key` != 'super_admin'
+            AND (is_tenant_role = 1 OR is_tenant_role IS NULL)
+            ORDER BY name ASC
+        ")->fetchAll();
 
         $this->view('dashboard/hr/index', [
             'users' => $users,
@@ -43,17 +50,17 @@ class HRController extends Controller
 
     public function employee(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager', 'director']);
+        Auth::requireRoles(['admin', 'operation_manager', 'director', 'finance_manager']);
 
         $userId = (int)$request->input('id');
         if (!$userId) {
-            header('Location: ' . base_url('dashboard/hr?error=Invalid%20employee'));
+            header('Location: ' . base_url('staff/dashboard/hr?error=Invalid%20employee'));
             return;
         }
 
         $user = $this->users->find($userId);
         if (!$user) {
-            header('Location: ' . base_url('dashboard/hr?error=Employee%20not%20found'));
+            header('Location: ' . base_url('staff/dashboard/hr?error=Employee%20not%20found'));
             return;
         }
 
@@ -67,7 +74,7 @@ class HRController extends Controller
         $attendanceSummary = $this->getAttendanceSummary($userId);
 
         $this->view('dashboard/hr/employee', [
-            'user' => $user,
+            'employee' => $user, // Use 'employee' instead of 'user' to avoid overriding logged-in user
             'records' => $records,
             'payrollHistory' => $payrollHistory,
             'attendanceSummary' => $attendanceSummary,
@@ -76,7 +83,7 @@ class HRController extends Controller
 
     public function addRecord(Request $request): void
     {
-        Auth::requireRoles(['admin', 'operation_manager']);
+        Auth::requireRoles(['director', 'admin', 'operation_manager', 'finance_manager']);
 
         $userId = (int)$request->input('user_id');
         $type = $request->input('type');
@@ -84,7 +91,7 @@ class HRController extends Controller
         $description = trim($request->input('description', ''));
 
         if (!$userId || !$type || !$title) {
-            header('Location: ' . base_url('dashboard/hr/employee?id=' . $userId . '&error=Missing%20required%20fields'));
+            header('Location: ' . base_url('staff/dashboard/hr/employee?id=' . $userId . '&error=Missing%20required%20fields'));
             return;
         }
 
@@ -100,7 +107,7 @@ class HRController extends Controller
 
         $this->createEmployeeRecord($userId, $type, $title, $description);
 
-        header('Location: ' . base_url('dashboard/hr/employee?id=' . $userId . '&success=Record%20added'));
+        header('Location: ' . base_url('staff/dashboard/hr/employee?id=' . $userId . '&success=Record%20added'));
     }
 
     protected function getEmployeeRecords(?int $userId = null): array

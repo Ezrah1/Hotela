@@ -14,6 +14,11 @@ ob_start();
     <?php if (!empty($_GET['error'])): ?>
         <div class="alert alert-error" style="margin: 1rem 0; padding: 0.75rem 1rem; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 0.5rem;">
             <?= htmlspecialchars($_GET['error']); ?>
+            <?php if (!empty($_GET['duplicate_id'])): ?>
+                <br><a href="<?= base_url('staff/dashboard/maintenance?filter=mine&highlight=' . (int)$_GET['duplicate_id']); ?>" style="color: #dc2626; text-decoration: underline; margin-top: 0.5rem; display: inline-block;">
+                    View Existing Request
+                </a>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 

@@ -38,28 +38,33 @@ $router->load(base_path('routes/platform.php'));
 
 $request = new Request();
 
-// Check license status (except for license renewal page)
-if (!str_starts_with($request->uri(), '/license')) {
+// Check license status (except for license renewal page and login)
+if (!str_starts_with($request->uri(), '/license') && !str_starts_with($request->uri(), '/login') && !str_starts_with($request->uri(), '/staff/login')) {
     $licensingService = new \App\Services\LicensingService();
     if ($licensingService->isLocked()) {
-        // Allow access to license renewal page
-        if (str_starts_with($request->uri(), '/staff/dashboard/license')) {
-            // Continue to license page
+        // Allow access to license renewal page and logout
+        if (str_starts_with($request->uri(), '/staff/dashboard/license') || 
+            str_starts_with($request->uri(), '/logout') ||
+            str_starts_with($request->uri(), '/staff/logout')) {
+            // Continue to license page or logout
         } else {
-            header('Location: /staff/dashboard/license');
+            header('Location: ' . base_url('staff/dashboard/license'));
             exit;
         }
     }
 }
 
 // Require authentication for protected routes (staff area)
-$protectedPrefixes = ['/staff/dashboard', '/staff/admin', '/sysadmin'];
+// Note: /sysadmin routes are handled by SystemAuth middleware, not here
+$protectedPrefixes = ['/staff/dashboard', '/staff/admin'];
+$uri = $request->uri();
 foreach ($protectedPrefixes as $prefix) {
-    if (str_starts_with($request->uri(), $prefix)) {
+    if (str_starts_with($uri, $prefix)) {
         \App\Support\Auth::requireRoles();
         break;
     }
 }
+// Don't apply tenant auth to sysadmin routes - they use SystemAuth middleware
 
 $router->dispatch($request);
 

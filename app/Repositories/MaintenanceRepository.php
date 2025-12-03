@@ -39,6 +39,7 @@ class MaintenanceRepository
                 r.room_number,
                 r.display_name as room_name,
                 u1.name as requested_by_name,
+                u1.role_key as requester_role_key,
                 u2.name as assigned_to_name,
                 s.name as supplier_name,
                 u3.name as approved_by_name,
@@ -80,6 +81,7 @@ class MaintenanceRepository
                 r.display_name as room_name,
                 u1.name as requested_by_name,
                 u1.email as requested_by_email,
+                u1.role_key as requester_role_key,
                 u2.name as assigned_to_name,
                 u2.email as assigned_to_email,
                 s.name as supplier_name,
@@ -259,6 +261,85 @@ class MaintenanceRepository
         $date = date('Ymd');
         $random = strtoupper(substr(uniqid(), -4));
         return $prefix . '-' . $date . '-' . $random;
+    }
+
+    /**
+     * Check for duplicate maintenance requests in the same department
+     * Returns existing request if found, null otherwise
+     */
+    public function findDuplicate(int $userId, string $title, ?string $description = null, ?int $roomId = null): ?array
+    {
+        // Get user's role to determine department
+        $userStmt = $this->db->prepare('SELECT role_key FROM users WHERE id = :id');
+        $userStmt->execute(['id' => $userId]);
+        $user = $userStmt->fetch();
+        
+        if (!$user) {
+            return null;
+        }
+
+        $userRoleKey = $user['role_key'];
+        $department = \App\Support\DepartmentHelper::getDepartmentFromRole($userRoleKey);
+
+        if (!$department) {
+            return null;
+        }
+
+        // Get all role keys for this department
+        $departmentRoleKeys = \App\Support\DepartmentHelper::getRolesForDepartment($department);
+
+        if (empty($departmentRoleKeys)) {
+            return null;
+        }
+
+        // Find open/pending requests in the same department with similar title/description
+        $placeholders = [];
+        $params = [];
+        foreach ($departmentRoleKeys as $index => $roleKey) {
+            $param = 'role_key_' . $index;
+            $params[$param] = $roleKey;
+            $placeholders[] = ":{$param}";
+        }
+
+        // Statuses that indicate an active/open request
+        $openStatuses = ['pending', 'ops_review', 'finance_review', 'approved', 'assigned', 'in_progress'];
+        $statusPlaceholders = [];
+        foreach ($openStatuses as $index => $status) {
+            $param = 'status_' . $index;
+            $params[$param] = $status;
+            $statusPlaceholders[] = ":{$param}";
+        }
+
+        $params['title'] = '%' . $title . '%';
+        if ($description) {
+            $params['description'] = '%' . $description . '%';
+        }
+        if ($roomId) {
+            $params['room_id'] = $roomId;
+        }
+
+        $sql = '
+            SELECT mr.*, u.role_key AS requester_role_key
+            FROM maintenance_requests mr
+            INNER JOIN users u ON u.id = mr.requested_by
+            WHERE u.role_key IN (' . implode(', ', $placeholders) . ')
+            AND mr.status IN (' . implode(', ', $statusPlaceholders) . ')
+            AND (mr.title LIKE :title OR mr.description LIKE :title)';
+        
+        if ($description) {
+            $sql .= ' AND (mr.title LIKE :description OR mr.description LIKE :description)';
+        }
+        if ($roomId) {
+            $sql .= ' AND mr.room_id = :room_id';
+        }
+        
+        $sql .= ' ORDER BY mr.created_at DESC LIMIT 1';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $duplicate = $stmt->fetch();
+
+        return $duplicate ?: null;
     }
 }
 

@@ -18,7 +18,7 @@ class PaymentGatewayController extends Controller
 
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
         
         $gateway = $request->input('gateway', 'mpesa');
         $settings = $this->store->all();
@@ -34,7 +34,7 @@ class PaymentGatewayController extends Controller
 
     public function update(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
         
         $gateway = $request->input('gateway');
         $payload = $request->all();
@@ -59,10 +59,11 @@ class PaymentGatewayController extends Controller
 
         // Check if request came from settings page
         $referer = $_SERVER['HTTP_REFERER'] ?? '';
-        if (strpos($referer, 'admin/settings') !== false) {
-            header('Location: ' . base_url('admin/settings?tab=payment-gateway&gateway=' . urlencode($gateway)));
+        if (strpos($referer, 'admin/settings') !== false || strpos($referer, 'staff/admin/settings') !== false) {
+            // Use the correct route from platform.php
+            header('Location: ' . base_url('staff/admin/settings?tab=payment-gateway&gateway=' . urlencode($gateway) . '&success=' . urlencode('Payment gateway settings saved successfully')));
         } else {
-            header('Location: ' . base_url('dashboard/payment-gateway?gateway=' . urlencode($gateway)));
+            header('Location: ' . base_url('staff/dashboard/payment-gateway?gateway=' . urlencode($gateway) . '&success=' . urlencode('Payment gateway settings saved successfully')));
         }
     }
 

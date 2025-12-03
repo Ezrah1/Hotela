@@ -14,15 +14,31 @@ class Request
         $this->body = $_POST ?? [];
         $this->server = $_SERVER ?? [];
         
-        // Handle JSON request body
+        // Handle request body for POST/PUT/PATCH
         if ($this->method() === 'POST' || $this->method() === 'PUT' || $this->method() === 'PATCH') {
             $contentType = $this->server['CONTENT_TYPE'] ?? '';
+            
+            // Handle JSON request body
             if (str_contains($contentType, 'application/json')) {
                 $jsonInput = file_get_contents('php://input');
                 if ($jsonInput) {
                     $jsonData = json_decode($jsonInput, true);
                     if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
                         $this->body = array_merge($this->body, $jsonData);
+                    }
+                }
+            }
+            // Handle form-encoded request body
+            // PHP should auto-populate $_POST, but if it's empty, parse manually from php://input
+            elseif (str_contains($contentType, 'application/x-www-form-urlencoded')) {
+                // If $_POST is empty, try parsing from php://input
+                if (empty($this->body)) {
+                    $input = file_get_contents('php://input');
+                    if ($input) {
+                        parse_str($input, $parsed);
+                        if (is_array($parsed) && !empty($parsed)) {
+                            $this->body = $parsed;
+                        }
                     }
                 }
             }
@@ -57,7 +73,19 @@ class Request
 
     public function input(string $key, $default = null)
     {
-        return $this->body[$key] ?? $this->query[$key] ?? $default;
+        // First check $_POST directly (most reliable for standard form submissions)
+        if (isset($_POST[$key])) {
+            return $_POST[$key];
+        }
+        // Then check our parsed body
+        if (isset($this->body[$key])) {
+            return $this->body[$key];
+        }
+        // Finally check query params
+        if (isset($this->query[$key])) {
+            return $this->query[$key];
+        }
+        return $default;
     }
 
     public function all(): array

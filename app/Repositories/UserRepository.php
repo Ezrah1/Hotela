@@ -25,13 +25,129 @@ class UserRepository
         $stmt->execute(['id' => $id]);
         $user = $stmt->fetch();
 
+        if ($user) {
+            // Load all roles for this user
+            $user['roles'] = $this->getUserRoles($id);
+            $user['role_keys'] = array_column($user['roles'], 'role_key');
+            // Set primary role_key for backward compatibility
+            $primaryRole = $this->getPrimaryRole($id);
+            if ($primaryRole) {
+                $user['role_key'] = $primaryRole;
+            }
+        }
+
         return $user ?: null;
+    }
+
+    /**
+     * Get all roles assigned to a user
+     */
+    public function getUserRoles(int $userId): array
+    {
+        $stmt = $this->db->prepare('
+            SELECT ur.role_key, ur.is_primary, r.name AS role_name
+            FROM user_roles ur
+            INNER JOIN roles r ON r.`key` = ur.role_key
+            WHERE ur.user_id = :user_id
+            ORDER BY ur.is_primary DESC, r.name ASC
+        ');
+        $stmt->execute(['user_id' => $userId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Get primary role for a user (for backward compatibility)
+     */
+    public function getPrimaryRole(int $userId): ?string
+    {
+        $stmt = $this->db->prepare('
+            SELECT role_key
+            FROM user_roles
+            WHERE user_id = :user_id AND is_primary = 1
+            LIMIT 1
+        ');
+        $stmt->execute(['user_id' => $userId]);
+        $result = $stmt->fetch();
+        return $result ? $result['role_key'] : null;
+    }
+
+    /**
+     * Check if user has a specific role
+     */
+    public function hasRole(int $userId, string $roleKey): bool
+    {
+        $stmt = $this->db->prepare('
+            SELECT 1
+            FROM user_roles
+            WHERE user_id = :user_id AND role_key = :role_key
+            LIMIT 1
+        ');
+        $stmt->execute(['user_id' => $userId, 'role_key' => $roleKey]);
+        return (bool)$stmt->fetch();
+    }
+
+    /**
+     * Set roles for a user (replaces all existing roles)
+     */
+    public function setUserRoles(int $userId, array $roleKeys, ?string $primaryRoleKey = null): void
+    {
+        // Remove existing roles
+        $deleteStmt = $this->db->prepare('DELETE FROM user_roles WHERE user_id = :user_id');
+        $deleteStmt->execute(['user_id' => $userId]);
+
+        if (empty($roleKeys)) {
+            return;
+        }
+
+        // If no primary role specified, use the first one
+        if (!$primaryRoleKey && !empty($roleKeys)) {
+            $primaryRoleKey = $roleKeys[0];
+        }
+
+        // Insert new roles
+        $insertStmt = $this->db->prepare('
+            INSERT INTO user_roles (user_id, role_key, is_primary)
+            VALUES (:user_id, :role_key, :is_primary)
+        ');
+
+        foreach ($roleKeys as $roleKey) {
+            $isPrimary = ($roleKey === $primaryRoleKey) ? 1 : 0;
+            $insertStmt->execute([
+                'user_id' => $userId,
+                'role_key' => $roleKey,
+                'is_primary' => $isPrimary,
+            ]);
+        }
+
+        // Update users.role_key for backward compatibility
+        if ($primaryRoleKey) {
+            $updateStmt = $this->db->prepare('UPDATE users SET role_key = :role_key WHERE id = :user_id');
+            $updateStmt->execute(['role_key' => $primaryRoleKey, 'user_id' => $userId]);
+        }
     }
 
     public function findByEmail(string $email): ?array
     {
         $stmt = $this->db->prepare('SELECT * FROM users WHERE email = :email LIMIT 1');
         $stmt->execute(['email' => $email]);
+        $user = $stmt->fetch();
+
+        return $user ?: null;
+    }
+
+    public function findByUsername(string $username): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM users WHERE username = :username LIMIT 1');
+        $stmt->execute(['username' => $username]);
+        $user = $stmt->fetch();
+
+        return $user ?: null;
+    }
+
+    public function findByUsernameOrEmail(string $identifier): ?array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM users WHERE username = :identifier OR email = :identifier LIMIT 1');
+        $stmt->execute(['identifier' => $identifier]);
         $user = $stmt->fetch();
 
         return $user ?: null;
@@ -57,7 +173,7 @@ class UserRepository
         // Search filter
         if ($search) {
             $params['search'] = '%' . $search . '%';
-            $conditions[] = '(users.name LIKE :search OR users.email LIKE :search)';
+            $conditions[] = '(users.name LIKE :search OR users.email LIKE :search OR users.username LIKE :search)';
         }
 
         $whereClause = !empty($conditions) ? 'WHERE ' . implode(' AND ', $conditions) : '';
@@ -129,7 +245,7 @@ class UserRepository
 
     public function update(int $id, array $data): void
     {
-        $allowedFields = ['name', 'email', 'role_key', 'status'];
+        $allowedFields = ['name', 'email', 'username', 'role_key', 'status'];
         $updates = [];
         $params = ['id' => $id];
 

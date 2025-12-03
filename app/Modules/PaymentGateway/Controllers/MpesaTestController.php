@@ -11,7 +11,7 @@ class MpesaTestController extends Controller
 {
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
         
         $mpesaService = new MpesaService();
         $verification = $mpesaService->verifyConfiguration();
@@ -24,7 +24,7 @@ class MpesaTestController extends Controller
 
     public function testStkPush(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
         
         $phoneNumber = trim((string)$request->input('phone_number', ''));
         $amount = (float)$request->input('amount', 0);
@@ -75,7 +75,7 @@ class MpesaTestController extends Controller
 
     public function queryStatus(Request $request): void
     {
-        Auth::requireRoles(['admin']);
+        Auth::requireRoles(['director', 'admin']);
         
         $checkoutRequestId = $request->input('checkout_request_id');
 

@@ -44,29 +44,57 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <form method="get" action="<?= base_url('staff/dashboard/suppliers'); ?>" class="suppliers-search">
-        <div class="search-wrapper">
-            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.35-4.35"></path>
-            </svg>
-            <input 
-                type="text" 
-                name="search" 
-                value="<?= htmlspecialchars($search); ?>" 
-                placeholder="Search suppliers by name, contact, email, or phone..."
-                class="search-input"
-            >
-            <?php if ($search): ?>
-                <a href="<?= base_url('staff/dashboard/suppliers'); ?>" class="search-clear">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </a>
+    <form method="get" action="<?= base_url('staff/dashboard/suppliers'); ?>" class="suppliers-filters">
+        <div class="filters-row">
+            <div class="search-wrapper">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input 
+                    type="text" 
+                    name="search" 
+                    value="<?= htmlspecialchars($search); ?>" 
+                    placeholder="Search suppliers..."
+                    class="search-input"
+                >
+                <?php if ($search): ?>
+                    <a href="<?= base_url('staff/dashboard/suppliers?' . http_build_query(array_filter(['category' => $category, 'status' => $status, 'group' => $group]))); ?>" class="search-clear">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </a>
+                <?php endif; ?>
+            </div>
+            <select name="category" class="filter-select">
+                <option value="">All Categories</option>
+                <option value="product_supplier" <?= $category === 'product_supplier' ? 'selected' : ''; ?>>Product Suppliers</option>
+                <option value="service_provider" <?= $category === 'service_provider' ? 'selected' : ''; ?>>Service Providers</option>
+                <option value="both" <?= $category === 'both' ? 'selected' : ''; ?>>Both</option>
+            </select>
+            <select name="status" class="filter-select">
+                <option value="">All Statuses</option>
+                <option value="active" <?= $status === 'active' ? 'selected' : ''; ?>>Active</option>
+                <option value="suspended" <?= $status === 'suspended' ? 'selected' : ''; ?>>Suspended</option>
+                <option value="blacklisted" <?= $status === 'blacklisted' ? 'selected' : ''; ?>>Blacklisted</option>
+                <option value="inactive" <?= $status === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+            </select>
+            <select name="group" class="filter-select">
+                <option value="">All Groups</option>
+                <?php if (!empty($groups)): ?>
+                    <?php foreach ($groups as $groupName): ?>
+                        <option value="<?= htmlspecialchars($groupName); ?>" <?= $group === $groupName ? 'selected' : ''; ?>>
+                            <?= htmlspecialchars($groupName); ?>
+                        </option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </select>
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <?php if ($search || $category || $status || $group): ?>
+                <a href="<?= base_url('staff/dashboard/suppliers'); ?>" class="btn btn-outline">Clear</a>
             <?php endif; ?>
         </div>
-        <button type="submit" class="btn btn-primary">Search</button>
     </form>
 
     <?php if (empty($suppliers)): ?>
@@ -90,9 +118,28 @@ ob_start();
                     <div class="supplier-card-header">
                         <div class="supplier-name-section">
                             <h3 class="supplier-name"><?= htmlspecialchars($supplier['name']); ?></h3>
-                            <span class="supplier-status status-<?= $supplier['status']; ?>">
-                                <?= ucfirst($supplier['status']); ?>
-                            </span>
+                            <div class="supplier-badges">
+                                <span class="supplier-status status-<?= $supplier['status']; ?>">
+                                    <?= ucfirst($supplier['status']); ?>
+                                </span>
+                                <?php if (!empty($supplier['category'])): ?>
+                                    <span class="supplier-category category-<?= $supplier['category']; ?>">
+                                        <?php
+                                        $categoryLabels = [
+                                            'product_supplier' => 'Products',
+                                            'service_provider' => 'Services',
+                                            'both' => 'Both'
+                                        ];
+                                        echo $categoryLabels[$supplier['category']] ?? ucfirst($supplier['category']);
+                                        ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if (!empty($supplier['supplier_group'])): ?>
+                                    <span class="supplier-group">
+                                        <?= htmlspecialchars($supplier['supplier_group']); ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         <div class="supplier-actions">
                             <a href="<?= base_url('staff/dashboard/suppliers/show?id=' . $supplier['id']); ?>" class="btn-icon" title="View Details">
@@ -198,11 +245,15 @@ ob_start();
     color: #64748b;
 }
 
-.suppliers-search {
-    display: flex;
-    gap: 1rem;
+.suppliers-filters {
     margin-bottom: 2rem;
+}
+
+.filters-row {
+    display: flex;
+    gap: 0.75rem;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .search-wrapper {
@@ -298,14 +349,71 @@ ob_start();
     letter-spacing: 0.05em;
 }
 
+.supplier-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
 .supplier-status.status-active {
     background: #dcfce7;
     color: #16a34a;
 }
 
-.supplier-status.status-inactive {
+.supplier-status.status-suspended {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.supplier-status.status-blacklisted {
     background: #fee2e2;
     color: #dc2626;
+}
+
+.supplier-status.status-inactive {
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.supplier-category {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.supplier-group {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.filter-select {
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: #fff;
+    min-width: 150px;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(138, 106, 63, 0.1);
 }
 
 .supplier-actions {
@@ -443,11 +551,12 @@ ob_start();
         gap: 1rem;
     }
 
-    .suppliers-search {
+    .filters-row {
         flex-direction: column;
     }
 
-    .search-wrapper {
+    .search-wrapper,
+    .filter-select {
         width: 100%;
     }
 

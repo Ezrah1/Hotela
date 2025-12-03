@@ -67,7 +67,9 @@ class PosSaleRepository
             'mpesa_checkout_request_id' => $saleData['mpesa_checkout_request_id'] ?? null,
             'mpesa_merchant_request_id' => $saleData['mpesa_merchant_request_id'] ?? null,
             'mpesa_status' => $saleData['mpesa_status'] ?? null,
-            'payment_status' => $saleData['payment_status'] ?? ($saleData['payment_type'] === 'mpesa' ? 'pending' : ($saleData['payment_type'] === 'cash' ? 'paid' : 'pending')),
+            // All payments start as 'pending' unless explicitly set or M-Pesa is completed
+            // Staff must confirm payment was received for all payment types
+            'payment_status' => $saleData['payment_status'] ?? ($saleData['mpesa_status'] === 'completed' ? 'paid' : 'pending'),
         ]);
 
         $saleId = (int)$this->db->lastInsertId();
@@ -202,6 +204,26 @@ class PosSaleRepository
     {
         $stmt = $this->db->prepare('SELECT * FROM pos_sales WHERE mpesa_checkout_request_id = :checkout_request_id LIMIT 1');
         $stmt->execute(['checkout_request_id' => $checkoutRequestId]);
+        return $stmt->fetch() ?: null;
+    }
+
+    public function findByReference(string $reference): ?array
+    {
+        $stmt = $this->db->prepare('
+            SELECT 
+                ps.*,
+                u.name AS user_name,
+                t.name AS till_name,
+                r.reference AS reservation_reference,
+                r.guest_name AS reservation_guest_name
+            FROM pos_sales ps
+            LEFT JOIN users u ON u.id = ps.user_id
+            LEFT JOIN pos_tills t ON t.id = ps.till_id
+            LEFT JOIN reservations r ON r.id = ps.reservation_id
+            WHERE ps.reference = :reference
+            LIMIT 1
+        ');
+        $stmt->execute(['reference' => $reference]);
         return $stmt->fetch() ?: null;
     }
 

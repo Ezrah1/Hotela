@@ -7,4 +7,12 @@
     RewriteRule ^ index.php [L]
 </IfModule>
 
+# Cache control for CSS files - allow caching but with revalidation
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css)$">
+        Header set Cache-Control "public, max-age=3600, must-revalidate"
+        Header set Pragma "public"
+    </FilesMatch>
+</IfModule>
+
 

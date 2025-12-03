@@ -27,5 +27,15 @@ class NotificationService
     {
         return $this->notifications->latestForRole($roleKey, $limit);
     }
+
+    public function notifyUser(int $userId, string $title, string $message, array $payload = []): void
+    {
+        $this->notifications->create([
+            'user_id' => $userId,
+            'title' => $title,
+            'message' => $message,
+            'payload' => $payload ? json_encode($payload) : null,
+        ]);
+    }
 }
 

@@ -82,19 +82,45 @@ ob_start();
                 <span>Select Supplier/Service Provider <span style="color: #dc2626;">*</span></span>
                 <small style="color: #64748b; display: block; margin-bottom: 0.5rem;">Select the supplier or service provider to assign this work. A work order will be automatically generated.</small>
                 <select name="supplier_id" required class="modern-select">
-                    <option value="">-- Select Supplier --</option>
-                    <?php foreach ($allSuppliers ?? [] as $supplier): ?>
-                        <option value="<?= $supplier['id']; ?>" <?= in_array($supplier['id'], $recommendedSupplierIds) ? 'style="background: #fef3c7;"' : ''; ?>>
-                            <?= htmlspecialchars($supplier['name']); ?>
-                            <?php if (!empty($supplier['contact_person'])): ?>
-                                - <?= htmlspecialchars($supplier['contact_person']); ?>
+                    <option value="">-- Select Service Provider --</option>
+                    <?php if (!empty($recommendedSupplierIds)): ?>
+                        <optgroup label="Recommended Service Providers">
+                            <?php foreach ($allSuppliers ?? [] as $supplier): ?>
+                                <?php if (in_array($supplier['id'], $recommendedSupplierIds)): ?>
+                                    <option value="<?= $supplier['id']; ?>" style="background: #fef3c7;">
+                                        <?= htmlspecialchars($supplier['name']); ?>
+                                        <?php if (!empty($supplier['contact_person'])): ?>
+                                            - <?= htmlspecialchars($supplier['contact_person']); ?>
+                                        <?php endif; ?>
+                                        <?php if (!empty($supplier['reliability_score'])): ?>
+                                            (<?= number_format((float)$supplier['reliability_score'], 0); ?>% reliable)
+                                        <?php endif; ?>
+                                    </option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endif; ?>
+                    <optgroup label="All Service Providers">
+                        <?php foreach ($allSuppliers ?? [] as $supplier): ?>
+                            <?php if (empty($recommendedSupplierIds) || !in_array($supplier['id'], $recommendedSupplierIds)): ?>
+                                <option value="<?= $supplier['id']; ?>">
+                                    <?= htmlspecialchars($supplier['name']); ?>
+                                    <?php if (!empty($supplier['contact_person'])): ?>
+                                        - <?= htmlspecialchars($supplier['contact_person']); ?>
+                                    <?php endif; ?>
+                                    <?php if (!empty($supplier['reliability_score'])): ?>
+                                        (<?= number_format((float)$supplier['reliability_score'], 0); ?>% reliable)
+                                    <?php endif; ?>
+                                </option>
                             <?php endif; ?>
-                            <?php if (in_array($supplier['id'], $recommendedSupplierIds)): ?>
-                                (Recommended)
-                            <?php endif; ?>
-                        </option>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </optgroup>
                 </select>
+                <?php if (empty($allSuppliers)): ?>
+                    <div style="margin-top: 0.5rem; padding: 0.75rem; background: #fef3c7; border-radius: 0.5rem; border: 1px solid #fcd34d; color: #92400e;">
+                        <strong>No service providers found.</strong> Please create service providers in the Suppliers module and set their category to "Service Provider" or "Both".
+                    </div>
+                <?php endif; ?>
             </label>
         </div>
 

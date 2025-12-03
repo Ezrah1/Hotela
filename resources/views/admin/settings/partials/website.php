@@ -308,6 +308,27 @@ function checked($value) { return !empty($value) ? 'checked' : ''; }
             </div>
             <div class="form-group">
                 <label class="checkbox">
+                    <input type="hidden" name="pages[conferencing]" value="0">
+                    <input type="checkbox" name="pages[conferencing]" value="1" <?= checked($pages['conferencing'] ?? false); ?>>
+                    <span>Show Conferencing page</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox">
+                    <input type="hidden" name="pages[events]" value="0">
+                    <input type="checkbox" name="pages[events]" value="1" <?= checked($pages['events'] ?? false); ?>>
+                    <span>Show Events page</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox">
+                    <input type="hidden" name="pages[gallery]" value="0">
+                    <input type="checkbox" name="pages[gallery]" value="1" <?= checked($pages['gallery'] ?? false); ?>>
+                    <span>Show Gallery page</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label class="checkbox">
                     <input type="hidden" name="pages[order]" value="0">
                     <input type="checkbox" name="pages[order]" value="1" <?= checked($pages['order'] ?? true); ?>>
                     <span>Show Order | Booking page</span>
@@ -335,10 +356,132 @@ function checked($value) { return !empty($value) ? 'checked' : ''; }
                 <label class="checkbox">
                     <input type="hidden" name="online_payment_enabled" value="0">
                     <input type="checkbox" name="online_payment_enabled" value="1" <?= checked($website['online_payment_enabled'] ?? false); ?>>
-                    <span>Enable online payment (M-Pesa)</span>
+                    <span>Enable online payment (M-Pesa) for Bookings</span>
                     <small style="display: block; margin-top: 0.5rem; color: #64748b; font-size: 0.875rem;">When enabled, guests can pay for bookings using M-Pesa. Make sure M-Pesa is configured in Payment Gateways settings.</small>
                 </label>
             </div>
+        </div>
+
+        <div class="form-section">
+            <h4>Website Order Payment Methods</h4>
+            <p style="margin-bottom: 1rem; color: #64748b; font-size: 0.9rem;">Select which payment methods customers can use when placing orders on your website. Only payment gateways that are configured and enabled in <strong>Payment Gateways</strong> settings will appear here. At least one payment method must be enabled.</p>
+            <?php
+            // Get enabled payment methods from website settings
+            $enabledPaymentMethods = $website['enabled_payment_methods'] ?? ['cash']; // Default to cash only
+            if (!is_array($enabledPaymentMethods)) {
+                // Backward compatibility: if enable_mpesa_orders exists, convert it
+                if (!empty($website['enable_mpesa_orders'])) {
+                    $enabledPaymentMethods = ['cash', 'mpesa'];
+                } else {
+                    $enabledPaymentMethods = ['cash'];
+                }
+            }
+            
+            // Get configured payment gateways from settings
+            $paymentGateways = $settings['payment_gateways'] ?? [];
+            
+            // Define available payment methods with their metadata
+            $availablePaymentMethods = [
+                'cash' => [
+                    'label' => 'Cash on Delivery/Pickup',
+                    'description' => 'Customers pay with cash when receiving their order',
+                    'icon' => '💵',
+                    'always_available' => true, // Cash is always available
+                ],
+                'mpesa' => [
+                    'label' => 'M-Pesa',
+                    'description' => 'Customers pay using M-Pesa mobile money',
+                    'icon' => '💰',
+                    'always_available' => false,
+                ],
+                'card' => [
+                    'label' => 'Card Payments',
+                    'description' => 'Credit and debit card processing',
+                    'icon' => '💳',
+                    'always_available' => false,
+                ],
+                'stripe' => [
+                    'label' => 'Stripe',
+                    'description' => 'Online payment processing via Stripe',
+                    'icon' => '💳',
+                    'always_available' => false,
+                ],
+                'paypal' => [
+                    'label' => 'PayPal',
+                    'description' => 'PayPal online payment system',
+                    'icon' => '💳',
+                    'always_available' => false,
+                ],
+                'bank' => [
+                    'label' => 'Bank Transfer',
+                    'description' => 'Direct bank transfer payments',
+                    'icon' => '🏦',
+                    'always_available' => false,
+                ],
+            ];
+            
+            // Filter payment methods: only show those that are configured and enabled in Payment Gateways
+            // OR always show cash (it's always available)
+            $paymentMethods = [];
+            foreach ($availablePaymentMethods as $methodKey => $methodInfo) {
+                if ($methodInfo['always_available']) {
+                    // Cash is always available
+                    $paymentMethods[$methodKey] = $methodInfo;
+                } elseif (isset($paymentGateways[$methodKey]) && !empty($paymentGateways[$methodKey]['enabled'])) {
+                    // Only show if gateway is configured and enabled
+                    $paymentMethods[$methodKey] = $methodInfo;
+                }
+            }
+            ?>
+            <?php if (empty($paymentMethods)): ?>
+                <div style="padding: 2rem; text-align: center; background: #fef3c7; border: 1px solid #fbbf24; border-radius: 0.75rem; color: #92400e;">
+                    <p style="margin: 0 0 0.5rem 0; font-weight: 600;">No Payment Gateways Configured</p>
+                    <p style="margin: 0; font-size: 0.9rem;">Please configure and enable at least one payment gateway in <a href="<?= base_url('staff/admin/settings?tab=payment-gateway'); ?>" style="color: #92400e; text-decoration: underline;">Payment Gateways</a> settings. Cash payment is always available.</p>
+                </div>
+            <?php else: ?>
+                <div class="payment-methods-grid" style="display: grid; gap: 1rem;">
+                    <?php foreach ($paymentMethods as $methodKey => $methodInfo): ?>
+                        <div class="payment-method-card" style="padding: 1.25rem; background: #fff; border: 2px solid <?= in_array($methodKey, $enabledPaymentMethods) ? '#8b5cf6' : '#e2e8f0'; ?>; border-radius: 0.75rem; transition: all 0.2s ease;">
+                            <label class="checkbox" style="margin: 0; cursor: pointer;">
+                                <input type="hidden" name="enabled_payment_methods[<?= $methodKey; ?>]" value="0">
+                                <input type="checkbox" 
+                                       name="enabled_payment_methods[<?= $methodKey; ?>]" 
+                                       value="1" 
+                                       <?= in_array($methodKey, $enabledPaymentMethods) ? 'checked' : ''; ?>
+                                       onchange="updatePaymentMethodCard(this, '<?= $methodKey; ?>')"
+                                       <?= $methodKey === 'cash' ? 'disabled' : ''; ?>
+                                       title="<?= $methodKey === 'cash' ? 'Cash is always enabled' : ''; ?>">
+                                <div style="display: flex; align-items: start; gap: 1rem;">
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <span style="font-size: 1.25rem;"><?= htmlspecialchars($methodInfo['icon'] ?? ''); ?></span>
+                                            <span style="font-weight: 600; font-size: 1rem; color: #1e293b;">
+                                                <?= htmlspecialchars($methodInfo['label']); ?>
+                                            </span>
+                                            <?php if ($methodKey === 'cash'): ?>
+                                                <span style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: #dbeafe; color: #1e40af; border-radius: 0.25rem; font-weight: 500;">Always Available</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <small style="display: block; color: #64748b; font-size: 0.875rem; line-height: 1.5;">
+                                            <?= htmlspecialchars($methodInfo['description']); ?>
+                                        </small>
+                                    </div>
+                                    <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid <?= in_array($methodKey, $enabledPaymentMethods) ? '#8b5cf6' : '#cbd5e1'; ?>; background: <?= in_array($methodKey, $enabledPaymentMethods) ? '#8b5cf6' : '#fff'; ?>; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s ease;">
+                                        <?php if (in_array($methodKey, $enabledPaymentMethods)): ?>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            <small style="display: block; margin-top: 1rem; color: #64748b; font-size: 0.875rem;">
+                <strong>Note:</strong> Cash payment is always enabled. Other payment methods will only appear here after they are configured and enabled in <a href="<?= base_url('staff/admin/settings?tab=payment-gateway'); ?>" style="color: #8b5cf6; text-decoration: underline;">Payment Gateways</a> settings.
+            </small>
         </div>
 
         <div class="form-section">
@@ -877,6 +1020,54 @@ function showStatus(fieldName, message, type) {
     if (statusEl) {
         statusEl.textContent = message;
         statusEl.className = type ? type : '';
+    }
+}
+
+function updatePaymentMethodCard(checkbox, methodKey) {
+    // Cash is always enabled, prevent unchecking
+    if (methodKey === 'cash' && !checkbox.checked) {
+        checkbox.checked = true;
+        return;
+    }
+    
+    const card = checkbox.closest('.payment-method-card');
+    if (!card) return;
+    
+    if (checkbox.checked) {
+        card.style.borderColor = '#8b5cf6';
+        const indicator = card.querySelector('div[style*="border-radius: 50%"]');
+        if (indicator) {
+            indicator.style.borderColor = '#8b5cf6';
+            indicator.style.background = '#8b5cf6';
+            indicator.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            `;
+        }
+    } else {
+        card.style.borderColor = '#e2e8f0';
+        const indicator = card.querySelector('div[style*="border-radius: 50%"]');
+        if (indicator) {
+            indicator.style.borderColor = '#cbd5e1';
+            indicator.style.background = '#fff';
+            indicator.innerHTML = '';
+        }
+    }
+    
+    // Validate at least one payment method is selected (cash is always selected)
+    const allCheckboxes = document.querySelectorAll('input[name^="enabled_payment_methods"]:not([disabled])');
+    const checkedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+    
+    if (checkedCount === 0) {
+        // Re-enable cash by default (shouldn't happen, but safety check)
+        setTimeout(() => {
+            const cashCheckbox = document.querySelector('input[name="enabled_payment_methods[cash]"]');
+            if (cashCheckbox && !cashCheckbox.checked) {
+                cashCheckbox.checked = true;
+                updatePaymentMethodCard(cashCheckbox, 'cash');
+            }
+        }, 100);
     }
 }
 </script>

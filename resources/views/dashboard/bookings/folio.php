@@ -155,7 +155,7 @@ ob_start();
                 <option value="corporate">Corporate</option>
             </select>
             <small style="display: block; margin-top: 0.25rem; color: #64748b;">
-                Select payment method. Cash payments will be included in daily cash banking.
+                Select payment method. Cash payments will be included in daily cash banking. M-Pesa requires phone number and initiates STK Push.
             </small>
         </label>
         <div id="mpesa-phone-field" style="display: none;">

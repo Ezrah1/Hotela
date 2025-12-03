@@ -115,6 +115,47 @@ ob_start();
                                 </div>
                             </div>
                             <p class="notification-message"><?= htmlspecialchars($notification['message']); ?></p>
+                            
+                            <?php
+                            // Parse payload for action buttons
+                            $payload = null;
+                            if (!empty($notification['payload'])) {
+                                $payload = json_decode($notification['payload'], true);
+                            }
+                            
+                            // Show action buttons for overdue checkout notifications
+                            if ($payload && isset($payload['type']) && $payload['type'] === 'overdue_checkout' && !empty($payload['reservations'])): 
+                            ?>
+                                <div class="notification-actions-panel" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                                    <h5 style="font-size: 0.875rem; font-weight: 600; color: #dc2626; margin-bottom: 0.75rem;">Overdue Guests:</h5>
+                                    <div class="overdue-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                        <?php foreach ($payload['reservations'] as $reservation): ?>
+                                            <div class="overdue-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.5rem;">
+                                                <div>
+                                                    <strong style="color: #991b1b; font-size: 0.875rem;"><?= htmlspecialchars($reservation['guest_name']); ?></strong>
+                                                    <div style="font-size: 0.75rem; color: #7f1d1d; margin-top: 0.25rem;">
+                                                        <?= htmlspecialchars($reservation['room']); ?> · 
+                                                        Checkout: <?= date('M j, Y', strtotime($reservation['check_out'])); ?> · 
+                                                        <span style="color: #dc2626; font-weight: 600;"><?= (int)$reservation['days_overdue']; ?> day<?= (int)$reservation['days_overdue'] !== 1 ? 's' : ''; ?> overdue</span>
+                                                    </div>
+                                                </div>
+                                                <div style="display: flex; gap: 0.5rem;">
+                                                    <a href="<?= base_url('staff/dashboard/bookings/folio?ref=' . urlencode($reservation['reference'])); ?>" class="btn btn-outline btn-small" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
+                                                        View Folio
+                                                    </a>
+                                                    <form method="post" action="<?= base_url('staff/dashboard/bookings/check-out'); ?>" style="display: inline;" onsubmit="return confirm('Are you sure you want to check out <?= htmlspecialchars($reservation['guest_name']); ?>? Please ensure all charges are settled.');">
+                                                        <input type="hidden" name="reservation_id" value="<?= (int)$reservation['id']; ?>">
+                                                        <button type="submit" class="btn btn-primary btn-small" style="font-size: 0.75rem; padding: 0.375rem 0.75rem;">
+                                                            Check Out
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            
                             <div class="notification-meta">
                                 <span class="notification-time">
                                     <?php

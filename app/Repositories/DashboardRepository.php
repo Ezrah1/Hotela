@@ -71,7 +71,9 @@ class DashboardRepository
 
     public function outstandingBalance(): float
     {
-        $sql = 'SELECT SUM(balance) FROM folios WHERE status = ?';
+        // Only sum positive balances (money owed to the hotel)
+        // Negative balances represent credits/overpayments and shouldn't be included in outstanding
+        $sql = 'SELECT SUM(balance) FROM folios WHERE status = ? AND balance > 0';
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['open']);
 
@@ -134,6 +136,8 @@ class DashboardRepository
             LEFT JOIN rooms ON rooms.id = reservations.room_id
             LEFT JOIN room_types ON room_types.id = reservations.room_type_id
             WHERE reservations.check_in BETWEEN ? AND ?
+            AND reservations.status NOT IN (\'checked_out\', \'cancelled\')
+            AND reservations.check_in_status != \'checked_out\'
             ORDER BY reservations.check_in ASC
             LIMIT ' . (int)$limit;
 
@@ -157,6 +161,8 @@ class DashboardRepository
             LEFT JOIN rooms ON rooms.id = reservations.room_id
             LEFT JOIN room_types ON room_types.id = reservations.room_type_id
             WHERE reservations.check_out BETWEEN ? AND ?
+            AND reservations.status NOT IN (\'checked_out\', \'cancelled\')
+            AND reservations.check_in_status != \'checked_out\'
             ORDER BY reservations.check_out ASC
             LIMIT ' . (int)$limit;
 
@@ -181,6 +187,30 @@ class DashboardRepository
         $stmt->execute(['open']);
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Calculate total amount of pending payments (sum of all positive balances)
+     */
+    public function pendingPaymentsTotal(): float
+    {
+        $sql = 'SELECT SUM(balance) FROM folios WHERE balance > 0 AND status = ?';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['open']);
+
+        return (float)($stmt->fetchColumn() ?? 0);
+    }
+
+    /**
+     * Count number of folios with pending payments
+     */
+    public function pendingPaymentsCount(): int
+    {
+        $sql = 'SELECT COUNT(*) FROM folios WHERE balance > 0 AND status = ?';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['open']);
+
+        return (int)($stmt->fetchColumn() ?? 0);
     }
 
     public function lowStockItems(int $limit = 5): array

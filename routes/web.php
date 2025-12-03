@@ -1,7 +1,9 @@
 <?php
 
 use App\Modules\Admin\Controllers\SettingsController;
+use App\Modules\AuditLogs\Controllers\AuditLogsController;
 use App\Modules\Auth\Controllers\LoginController;
+use App\Modules\Backups\Controllers\BackupController;
 use App\Modules\CashBanking\Controllers\CashBankingController;
 use App\Modules\Dashboard\Controllers\DashboardController;
 use App\Modules\Inventory\Controllers\InventoryController;
@@ -13,6 +15,7 @@ use App\Modules\SysAdmin\Controllers\SysAdminController;
 use App\Modules\Website\Controllers\GuestController;
 use App\Modules\Website\Controllers\GuestPortalController;
 use App\Modules\Website\Controllers\OrderController;
+use App\Modules\Suppliers\Controllers\SupplierPortalController;
 
 return [
     // Public guest pages
@@ -30,8 +33,18 @@ return [
     ['POST', '/booking', [BookingController::class, 'store']],
     ['GET', '/guest/login', [GuestPortalController::class, 'showLogin']],
     ['POST', '/guest/login', [GuestPortalController::class, 'authenticate']],
+    ['POST', '/guest/login/request-code', [GuestPortalController::class, 'requestCode']],
     ['POST', '/guest/logout', [GuestPortalController::class, 'logout']],
     ['GET', '/guest/portal', [GuestPortalController::class, 'dashboard']],
+
+    // Supplier Portal
+    ['GET', '/supplier/login', [SupplierPortalController::class, 'showLogin']],
+    ['POST', '/supplier/login', [SupplierPortalController::class, 'authenticate']],
+    ['POST', '/supplier/login/request-code', [SupplierPortalController::class, 'requestCode']],
+    ['POST', '/supplier/logout', [SupplierPortalController::class, 'logout']],
+    ['GET', '/supplier/portal', [SupplierPortalController::class, 'dashboard']],
+    ['GET', '/supplier/purchase-orders', [SupplierPortalController::class, 'purchaseOrders']],
+    ['GET', '/supplier/purchase-order', [SupplierPortalController::class, 'showPurchaseOrder']],
 
     // Authentication
     ['GET', '/login', [LoginController::class, 'show']],
@@ -87,6 +100,15 @@ return [
     ['POST', '/dashboard/inventory/purchase-orders/receive', [InventoryController::class, 'receivePurchaseOrder']],
     ['GET', '/admin/settings', [SettingsController::class, 'index']],
     ['POST', '/admin/settings', [SettingsController::class, 'update']],
+    
+    // Backup Management
+    ['GET', '/staff/dashboard/backups', [BackupController::class, 'index']],
+    ['POST', '/staff/dashboard/backups/create', [BackupController::class, 'create']],
+    ['GET', '/staff/dashboard/backups/download', [BackupController::class, 'download']],
+    ['POST', '/staff/dashboard/backups/delete', [BackupController::class, 'delete']],
+    
+    // Audit Logs
+    ['GET', '/staff/dashboard/audit-logs', [AuditLogsController::class, 'index']],
 
     // Super admin routes
     ['GET', '/sysadmin/login', [SysAdminController::class, 'login']],

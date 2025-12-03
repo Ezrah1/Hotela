@@ -213,17 +213,65 @@ class MpesaCallbackController extends Controller
     protected function updateBookingPayment(int $bookingId, string $status, ?string $transactionId): void
     {
         $paymentStatus = $status === 'completed' ? 'paid' : ($status === 'failed' || $status === 'cancelled' ? 'unpaid' : 'unpaid');
+        
+        // If payment is completed, confirm the booking
+        // If payment failed or cancelled, keep booking as pending
+        $bookingStatus = ($status === 'completed') ? 'confirmed' : 'pending';
+        
         $stmt = db()->prepare('
             UPDATE reservations 
-            SET mpesa_status = :status, payment_status = :payment_status, mpesa_transaction_id = :transaction_id
+            SET mpesa_status = :status, 
+                payment_status = :payment_status, 
+                mpesa_transaction_id = :transaction_id,
+                status = :booking_status
             WHERE id = :id
         ');
         $stmt->execute([
             'status' => $status,
             'payment_status' => $paymentStatus,
             'transaction_id' => $transactionId,
+            'booking_status' => $bookingStatus,
             'id' => $bookingId,
         ]);
+        
+        // If payment completed, send confirmation email
+        if ($status === 'completed') {
+            try {
+                $reservationRepo = new \App\Repositories\ReservationRepository();
+                $reservation = $reservationRepo->findById($bookingId);
+                
+                if ($reservation && !empty($reservation['guest_email'])) {
+                    $roomTypeRepo = new \App\Repositories\RoomTypeRepository();
+                    $roomType = $roomTypeRepo->find((int)$reservation['room_type_id']);
+                    
+                    $emailService = new \App\Services\Email\EmailService();
+                    $bookingData = [
+                        'reference' => $reservation['reference'] ?? '',
+                        'check_in' => $reservation['check_in'] ?? '',
+                        'check_out' => $reservation['check_out'] ?? '',
+                        'adults' => (int)($reservation['adults'] ?? 1),
+                        'children' => (int)($reservation['children'] ?? 0),
+                        'room_type_id' => (int)$reservation['room_type_id'],
+                        'room_id' => $reservation['room_id'] ?? null,
+                        'total_amount' => (float)($reservation['total_amount'] ?? 0),
+                        'status' => 'confirmed',
+                        'payment_status' => 'paid',
+                        'payment_method' => $reservation['payment_method'] ?? 'mpesa',
+                        'room_type_name' => $roomType['name'] ?? 'Room Type',
+                    ];
+                    
+                    $guestData = [
+                        'guest_name' => $reservation['guest_name'] ?? 'Guest',
+                        'guest_email' => $reservation['guest_email'] ?? '',
+                        'guest_phone' => $reservation['guest_phone'] ?? '',
+                    ];
+                    
+                    $emailService->sendBookingConfirmation($bookingData, $guestData);
+                }
+            } catch (\Exception $e) {
+                error_log('Failed to send confirmation email after M-Pesa payment: ' . $e->getMessage());
+            }
+        }
     }
 
     protected function findFolioPaymentByCheckoutRequest(string $checkoutRequestId): ?array

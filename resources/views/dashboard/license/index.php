@@ -11,6 +11,22 @@
                     <h4 class="mb-0"><i class="fas fa-key"></i> License Management</h4>
                 </div>
                 <div class="card-body">
+                    <?php if (!empty($_GET['success'])): ?>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <h5><i class="fas fa-check-circle"></i> Success</h5>
+                            <p class="mb-0"><?= htmlspecialchars($_GET['success']) ?></p>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if (!empty($_GET['error'])): ?>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <h5><i class="fas fa-exclamation-triangle"></i> Error</h5>
+                            <p class="mb-0"><?= htmlspecialchars($_GET['error']) ?></p>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    <?php endif; ?>
+                    
                     <?php if ($validation['valid']): ?>
                         <div class="alert alert-success">
                             <h5><i class="fas fa-check-circle"></i> License Active</h5>
@@ -69,6 +85,21 @@
                             <h5 class="mb-0">Activate or Renew License</h5>
                         </div>
                         <div class="card-body">
+                            <?php if (!$validation['valid']): ?>
+                                <div class="alert alert-info mb-3">
+                                    <strong>Need a license?</strong> Click the "Fetch License" button below to request a license key from the system administrator. The license will be sent to your email automatically.
+                                </div>
+                                
+                                <form method="POST" action="<?= base_url('staff/dashboard/license/fetch'); ?>" class="mb-4">
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="fas fa-download"></i> Fetch License
+                                    </button>
+                                    <small class="form-text text-muted d-block mt-2">Request a license key to be sent to your registered email address.</small>
+                                </form>
+                                
+                                <hr class="my-4">
+                            <?php endif; ?>
+                            
                             <form method="POST" action="/staff/dashboard/license/activate">
                                 <div class="mb-3">
                                     <label for="license_key" class="form-label">License Key</label>

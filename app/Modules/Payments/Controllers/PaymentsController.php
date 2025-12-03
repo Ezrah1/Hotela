@@ -23,7 +23,7 @@ class PaymentsController extends Controller
     }
     public function index(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager', 'cashier', 'receptionist']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager', 'cashier', 'receptionist']);
 
         $start = $this->sanitizeDate($request->input('start')) ?? date('Y-m-01');
         $end = $this->sanitizeDate($request->input('end')) ?? date('Y-m-d');
@@ -39,6 +39,9 @@ class PaymentsController extends Controller
         
         // Get booking/folio payments
         $folioPayments = $this->getFolioPayments($start, $end, $paymentMethod);
+        
+        // Get direct booking payments (from reservations table - for paid bookings before check-in)
+        $bookingPayments = $this->getBookingPayments($start, $end, $paymentMethod);
 
         // Combine and filter by type
         $allPayments = [];
@@ -49,6 +52,9 @@ class PaymentsController extends Controller
         }
         if ($type === 'booking' || $type === '') {
             foreach ($folioPayments as $payment) {
+                $allPayments[] = array_merge($payment, ['source' => 'booking']);
+            }
+            foreach ($bookingPayments as $payment) {
                 $allPayments[] = array_merge($payment, ['source' => 'booking']);
             }
         }
@@ -159,6 +165,55 @@ class PaymentsController extends Controller
         return $stmt->fetchAll();
     }
 
+    /**
+     * Get booking payments directly from reservations table
+     * These are payments made at booking time (before check-in, so no folio exists yet)
+     * Only includes bookings that were paid at booking time (not pay_on_arrival)
+     */
+    protected function getBookingPayments(string $start, string $end, ?string $paymentMethod = null): array
+    {
+        $params = [
+            'start' => $start,
+            'end' => $end,
+        ];
+
+        $sql = "
+            SELECT 
+                r.id,
+                r.reference,
+                COALESCE(r.payment_method, 'cash') AS payment_type,
+                r.total_amount AS amount,
+                r.created_at,
+                NULL AS processed_by,
+                r.reference AS reservation_reference,
+                r.guest_name,
+                CONCAT('Booking Payment - ', r.reference) AS description
+            FROM reservations r
+            WHERE r.payment_status = 'paid'
+            AND r.payment_method != 'pay_on_arrival'
+            AND DATE(r.created_at) >= :start AND DATE(r.created_at) <= :end
+            AND r.id NOT IN (
+                SELECT f.reservation_id 
+                FROM folios f 
+                INNER JOIN folio_entries fe ON fe.folio_id = f.id
+                WHERE f.reservation_id = r.id
+                AND fe.type = 'payment'
+            )
+        ";
+
+        if ($paymentMethod) {
+            $sql .= ' AND COALESCE(r.payment_method, \'cash\') = :payment_method';
+            $params['payment_method'] = $paymentMethod;
+        }
+
+        $sql .= ' ORDER BY r.created_at DESC';
+
+        $stmt = db()->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
+    }
+
     protected function calculateSummary(array $payments): array
     {
         $total = 0;
@@ -186,7 +241,7 @@ class PaymentsController extends Controller
 
     public function record(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         if ($request->method() === 'POST') {
             $this->store($request);
@@ -217,7 +272,7 @@ class PaymentsController extends Controller
 
     public function store(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $user = Auth::user();
         if (!$user) {
@@ -337,7 +392,7 @@ class PaymentsController extends Controller
 
     public function manage(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $start = $this->sanitizeDate($request->input('start')) ?? date('Y-m-01');
         $end = $this->sanitizeDate($request->input('end')) ?? date('Y-m-d');

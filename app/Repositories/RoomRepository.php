@@ -31,7 +31,7 @@ class RoomRepository
             AND rooms.id NOT IN (
                 SELECT room_id FROM reservations
                 WHERE room_id IS NOT NULL
-                AND NOT (check_out <= :start OR check_in >= :end)
+                AND NOT (check_out < :start OR check_in > :end)
             )
             ORDER BY room_types.name, rooms.room_number
         ";
@@ -62,7 +62,7 @@ class RoomRepository
                 AND rooms.id NOT IN (
                     SELECT room_id FROM reservations
                     WHERE room_id IS NOT NULL
-                    AND NOT (check_out <= :start OR check_in >= :end)
+                    AND NOT (check_out < :start OR check_in > :end)
                 )
                 ORDER BY room_types.name, rooms.room_number
             ";
@@ -184,7 +184,7 @@ class RoomRepository
         $sql = '
             SELECT COUNT(*) FROM reservations
             WHERE room_id = :room
-            AND NOT (check_out <= :start OR check_in >= :end)
+            AND NOT (check_out < :start OR check_in > :end)
         ';
         $sql .= $this->tenantCondition('reservations', $params);
         $stmt = $this->db->prepare($sql);

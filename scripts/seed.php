@@ -9,8 +9,8 @@ use App\Core\Database;
 $pdo = Database::connection();
 
 $roles = [
-    ['key' => 'director', 'name' => 'Director', 'description' => 'View all reports & strategic settings'],
-    ['key' => 'admin', 'name' => 'Administrator', 'description' => 'Full system control'],
+    ['key' => 'director', 'name' => 'Director', 'description' => 'Hotel owner - Full system control'],
+    // 'admin' role is deprecated - mapped to director during migration
     ['key' => 'tech', 'name' => 'Technical Admin', 'description' => 'Systems & infrastructure'],
     ['key' => 'finance_manager', 'name' => 'Finance Manager', 'description' => 'Finance & supplier control'],
     ['key' => 'operation_manager', 'name' => 'Operations Manager', 'description' => 'Hotel operations'],
@@ -45,10 +45,10 @@ if ($tenantId === 0) {
 
 $users = [
     [
-        'name' => 'System Admin',
-        'email' => 'admin@hotela.test',
+        'name' => 'Hotel Director',
+        'email' => 'director@hotela.test',
         'password' => password_hash('password', PASSWORD_BCRYPT),
-        'role_key' => 'admin',
+        'role_key' => 'director', // Director is now the highest tenant role
     ],
     [
         'name' => 'Finance Lead',

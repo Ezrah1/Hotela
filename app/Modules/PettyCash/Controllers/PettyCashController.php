@@ -52,7 +52,7 @@ class PettyCashController extends Controller
 
     public function deposit(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         if ($request->method() === 'POST') {
             $this->processDeposit($request);
@@ -66,7 +66,7 @@ class PettyCashController extends Controller
 
     public function processDeposit(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $user = Auth::user();
         if (!$user) {
@@ -115,7 +115,7 @@ class PettyCashController extends Controller
 
     public function linkExpense(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager', 'operation_manager', 'cashier']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager', 'operation_manager', 'cashier']);
 
         $expenseId = (int)$request->input('expense_id');
         $amount = (float)$request->input('amount', 0);
@@ -155,7 +155,7 @@ class PettyCashController extends Controller
 
     public function settings(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         if ($request->method() === 'POST') {
             $this->updateSettings($request);
@@ -173,7 +173,7 @@ class PettyCashController extends Controller
 
     public function updateSettings(Request $request): void
     {
-        Auth::requireRoles(['admin', 'finance_manager']);
+        Auth::requireRoles(['director', 'admin', 'finance_manager']);
 
         $data = [
             'account_name' => trim($request->input('account_name', 'Petty Cash')),

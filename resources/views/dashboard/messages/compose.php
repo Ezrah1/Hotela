@@ -61,7 +61,7 @@ ob_start();
                 <span>Select Role</span>
                 <select name="recipient_role" id="recipient_role" class="modern-select">
                     <option value="">Choose a role...</option>
-                    <option value="admin" <?= $recipientRole === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                    <option value="director" <?= $recipientRole === 'director' ? 'selected' : ''; ?>>Director</option>
                     <option value="finance_manager" <?= $recipientRole === 'finance_manager' ? 'selected' : ''; ?>>Finance Manager</option>
                     <option value="operation_manager" <?= $recipientRole === 'operation_manager' ? 'selected' : ''; ?>>Operation Manager</option>
                     <option value="receptionist" <?= $recipientRole === 'receptionist' ? 'selected' : ''; ?>>Receptionist</option>
